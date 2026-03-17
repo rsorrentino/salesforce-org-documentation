@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C \"c:/Users/test/Documents/Workspace/Tools/vlocity-datapack-manager\" log --all --oneline -- .env)",
+      "Bash(node:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(npm run build:*)",
+      "Bash(git push:*)"
+    ]
+  }
+}
