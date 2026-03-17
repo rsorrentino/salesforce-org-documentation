@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Model - Salesforce Technical Documentation</title>
+    <link rel="stylesheet" href="../../css/styles.css">
+    <script src="../../js/vendor/mermaid.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-left">
+                <h1 class="logo"><a href="../../index.html">Salesforce Technical Documentation</a></h1>
+            </div>
+            <nav class="breadcrumb">
+                <a href="../../index.html">Home</a> / Data Model
+            </nav>
+        </header>
+
+        <div class="content-wrapper">
+            <nav class="sidebar">
+                <div class="nav-section">
+                    <h3>Data Model Navigation</h3>
+                    <ul>
+                        <li><a href="index.html" class="active">Overview</a></li>
+                    </ul>
+                </div>
+            </nav>
+
+            <main class="main-content">
+                <h2>Data Model</h2>
+
+                <section>
+                    <h3>Overview</h3>
+                    <p>The data model consists of standard Salesforce objects and custom objects designed for the medical area business processes.</p>
+
+                    <div class="info-box">
+                        <h4>Key Object Categories</h4>
+                        <ul>
+                            <li><strong>Account Management:</strong> Account, Contact, Lead, Opportunity</li>
+                            <li><strong>Service Management:</strong> Service Appointment, Service Territory, Resource</li>
+                            <li><strong>Order Management:</strong> Order, OrderItem, Customer Order</li>
+                            <li><strong>Product Management:</strong> Product2, PricebookEntry</li>
+                            <li><strong>Case Management:</strong> Case, Task, Event</li>
+                            <li><strong>Medical Objects:</strong> ENT Doctor, Medical Shop, Fitting, Assessment</li>
+                        </ul>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>UML Data Model Diagram</h3>
+                    <p>Entity Relationship Diagram showing key objects and their relationships (limited to top objects to ensure proper rendering):</p>
+                    <div class="uml-container">
+                        <div class="mermaid" id="uml-diagram">
+{{UML_DIAGRAM}}
+                        </div>
+                    </div>
+                    <p class="muted" style="margin-top: 1rem;">
+                        <em>Note: Diagram shows a subset of objects. Use the object list below to view all objects.</em>
+                    </p>
+                </section>
+
+                <section>
+                    <h3>Objects Overview</h3>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <h3>{{OBJECTS_COUNT}}</h3>
+                            <p>Objects</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3>{{RECORD_TYPES_COUNT}}</h3>
+                            <p>Record Types</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3>{{VALIDATION_RULES_COUNT}}</h3>
+                            <p>Validation Rules</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3>{{GLOBAL_VALUE_SETS_COUNT}}</h3>
+                            <p>Global Value Sets</p>
+                        </div>
+                    </div>
+                    {{OBJECTS_LIST}}
+                </section>
+
+                <section>
+                    <h3>Global Value Sets</h3>
+                    <p>Picklist values shared across multiple objects.</p>
+                    {{GLOBAL_VALUE_SETS_LIST}}
+                </section>
+
+                <section>
+                    <h3>Quick Search</h3>
+                    <p>Use the search box below to quickly find objects by name or label:</p>
+                    <input type="text" class="search-box" placeholder="Search objects..." id="objectSearch" data-target-table="objectsTable" data-target-info="objectsPaginationInfo">
+                </section>
+            </main>
+        </div>
+
+        <footer>
+            <p>Salesforce Technical Documentation</p>
+        </footer>
+    </div>
+    <script src="../../js/app.js"></script>
+    <script src="../../js/pagination.js"></script>
+</body>
+</html>

@@ -39,6 +39,23 @@ npm run init       # Initialize directory structure and templates
 npm run generate   # Analyze metadata and generate all pages
 ```
 
+### Pointing at a custom Salesforce repo
+
+By default the tool looks for Salesforce metadata in the **parent directory** of this project. You can override this in three equivalent ways:
+
+```bash
+# 1. CLI flag (recommended)
+node generate.js --source=../my-salesforce-repo
+
+# 2. Environment variable
+SOURCE_DIR=../my-salesforce-repo npm run generate
+
+# 3. Legacy positional argument
+node generate.js ../my-salesforce-repo
+```
+
+The path is resolved to an absolute path, validated, and logged at startup. An error message with usage hints is printed if the directory does not exist.
+
 ### Daily workflow
 
 ```bash
@@ -69,6 +86,7 @@ npm run ci               # Generate + link-check (for CI/CD pipelines)
 
 | Variable        | Default | Description                                  |
 |----------------|---------|----------------------------------------------|
+| `SOURCE_DIR`   | `../`   | Path to the Salesforce metadata repository   |
 | `PORT`         | `8000`  | Port for the local dev server                |
 | `DOCS_BASE_URL`| —       | Base URL used when generating `sitemap.xml`  |
 | `PULL_CHANGES` | `true`  | Whether `update.js` pulls git changes        |
@@ -164,3 +182,40 @@ Every section generator extends `BaseGenerator` and is independently invokable. 
 | `mermaid` | Diagram generation (flows, architecture) |
 | `glob` *(dev)* | File pattern matching during generation |
 | `http-server` *(dev)* | Simple local HTTP server for previewing output |
+
+---
+
+## Troubleshooting
+
+### Mermaid diagrams not rendering
+
+- The bundled `js/vendor/mermaid.min.js` is loaded offline — no CDN required. Verify the file exists after `npm install`.
+- Diagrams require `securityLevel: 'loose'` (already set in `js/app.js`). If your Content-Security-Policy blocks inline scripts, diagrams will silently fail.
+- Large diagrams (hundreds of nodes) can exceed Mermaid's default depth limit. The functional map caps nodes per type to stay within limits.
+- A fallback error message is displayed in place of each broken diagram — check the browser console for the Mermaid parse error.
+
+### Missing or empty sections
+
+- Sections like **Flows**, **Objects**, and **Apex** are only populated when the Salesforce repo contains the relevant metadata folders (`force-app/main/default/flows/`, etc.).
+- If a section shows "No data found", verify `--source` points to the correct repository root and that the metadata has been retrieved (`sf project retrieve start`).
+
+### Broken links in generated pages
+
+Run `npm run link-check` to get a full report. Most broken links indicate:
+- A metadata file was renamed or removed since the last generation
+- An individual detail page was not generated (check for errors in the console during `generate`)
+
+### Slow generation on large orgs
+
+For repos with 1 000+ Apex classes or 100+ profiles:
+- Run `npm run generate` once and use `npm run update` for incremental regeneration
+- The `DiffGenerator` snapshots metadata between runs and only surfaces changed items in the "What Changed" page
+
+### Source directory not found
+
+```
+Error: Source directory not found: /path/to/repo
+Usage: node generate.js --source=<path>
+```
+
+The path passed via `--source` or `SOURCE_DIR` does not exist or is not accessible. Use an absolute path to avoid working-directory ambiguity.

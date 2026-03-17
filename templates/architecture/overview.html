@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Architecture - Salesforce Technical Documentation</title>
+    <link rel="stylesheet" href="../../css/styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-left">
+                <h1 class="logo"><a href="../../index.html">Salesforce Technical Documentation</a></h1>
+            </div>
+            <nav class="breadcrumb">
+                <a href="../../index.html">Home</a> / Architecture
+            </nav>
+        </header>
+        
+        <div class="content-wrapper">
+            <nav class="sidebar">
+                <div class="nav-section">
+                    <h3>Navigation</h3>
+                    <ul>
+                        <li><a href="index.html" class="active">Overview</a></li>
+                        <li><a href="repository-structure.html">Repository Structure</a></li>
+                    </ul>
+                    <h3>Main Navigation</h3>
+                    <ul>
+                        <li><a href="../../index.html">🏠 Quickstart</a></li>
+                        <li><a href="../profiles/navigation-map.html">🗺️ Profile Navigation</a></li>
+                        <li><a href="../profiles/index.html">🔒 Security & Access</a></li>
+                        <li><a href="../objects/index.html">📊 Data Model</a></li>
+                        <li><a href="../ui/index.html">🎨 UI Layer</a></li>
+                        <li><a href="../apex/index.html">⚙️ Apex Layer</a></li>
+                        <li><a href="../automation/index.html">🔄 Automation</a></li>
+                        <li><a href="../integrations/index.html">🔌 Integrations</a></li>
+                        <li><a href="index.html" class="active">🏗️ Architecture</a></li>
+                        <li><a href="../deployment/index.html">🚀 Deployment</a></li>
+                        <li><a href="../maintenance/index.html">🛠️ Maintenance & Support</a></li>
+                        <li><a href="../cross-reference/index.html">🔗 Cross-Reference</a></li>
+                    </ul>
+                </div>
+            </nav>
+            
+            <main class="main-content">
+                <h2>System Architecture</h2>
+                
+                <section>
+                    <h3>Architecture Overview</h3>
+                    <p>The MedicalArea-Salesforce-APAC system follows a layered architecture pattern:</p>
+                    
+                    <div class="architecture-layers">
+                        <div class="layer">
+                            <h4>Presentation Layer</h4>
+                            <ul>
+                                <li><strong>Lightning Web Components:</strong> 1614 components</li>
+                                <li><strong>Aura Components:</strong> Legacy UI components</li>
+                                <li><strong>FlexiPages:</strong> 118 pages</li>
+                                <li><strong>Visualforce Pages:</strong> Custom pages</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="layer">
+                            <h4>Business Logic Layer</h4>
+                            <ul>
+                                <li><strong>Apex Classes:</strong> 1977 classes</li>
+                                <li><strong>Apex Triggers:</strong> 58 triggers</li>
+                                <li><strong>Flows:</strong> 332 flows</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="layer">
+                            <h4>Data Layer</h4>
+                            <ul>
+                                <li>Standard Salesforce Objects</li>
+                                <li>Custom Objects</li>
+                                <li>Custom Metadata Types</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="layer">
+                            <h4>Integration Layer</h4>
+                            <ul>
+                                <li>REST/SOAP APIs</li>
+                                <li>Named Credentials</li>
+                                <li>External Services</li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Functional Map</h3>
+                    <p>Use the functional map to trace how UI, flows, Apex, and objects are connected end-to-end.</p>
+                    <p><a href="functional-map.html" class="btn">Open Functional Map</a></p>
+                </section>
+                
+                <section>
+                    <h3>Component Distribution</h3>
+                    <div class="info-box">
+                        <p><strong>Total Components:</strong> 3981</p>
+                        <p><strong>Security Profiles:</strong> 47</p>
+                        <p><strong>Permission Sets:</strong> 124</p>
+                    </div>
+                </section>
+            </main>
+        </div>
+        
+        <footer>
+            <p>Salesforce Technical Documentation</p>
+        </footer>
+    </div>
+    <script src="../../js/app.js"></script>
+</body>
+</html>

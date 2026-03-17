@@ -1,0 +1,134 @@
+﻿#!/usr/bin/env node
+/**
+ * Salesforce Technical Documentation Generator (Modular)
+ * 
+ * Modular documentation generator with separate generators for each metadata type.
+ * 
+ * Structure:
+ * - generators/ - Individual generator modules
+ * - templates/{type}/ - Templates organized by type
+ * - pages/{type}/ - Generated pages organized by type
+ */
+
+import fs from 'fs/promises';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { SalesforceDocGenerator } from './analyzer.js';
+import {
+    FlowsGenerator,
+    ProfilesGenerator,
+    ApexGenerator,
+    UIGenerator,
+    AutomationGenerator,
+    ObjectsGenerator,
+    IntegrationsGenerator,
+    ArchitectureGenerator,
+    CrossReferenceGenerator,
+    DeploymentGenerator,
+    MaintenanceGenerator,
+    SearchIndexGenerator
+} from './generators/index.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+class ModularDocGenerator {
+    constructor(repoRoot) {
+        this.repoRoot = path.resolve(repoRoot || path.join(__dirname, '..'));
+        this.outputDir = path.join(this.repoRoot, 'documentation-portal');
+        this.data = {};
+        
+        // Use the existing analyzer for now
+        this.analyzer = new SalesforceDocGenerator(repoRoot);
+    }
+    
+    /**
+     * Analyze all metadata (delegates to existing analyzer)
+     */
+    async analyzeAll() {
+        await this.analyzer.analyzeAll();
+        this.data = this.analyzer.data;
+    }
+    
+    /**
+     * Generate all documentation using modular generators
+     */
+    async generate() {
+        console.log('Generating documentation with modular generators...\n');
+        
+        // Ensure directories exist
+        await fs.mkdir(path.join(this.outputDir, 'pages'), { recursive: true });
+        await fs.mkdir(path.join(this.outputDir, 'templates'), { recursive: true });
+        
+        // Initialize generators
+        const generators = [
+            new FlowsGenerator(this.repoRoot, this.data),
+            new ProfilesGenerator(this.repoRoot, this.data),
+            new ApexGenerator(this.repoRoot, this.data),
+            new UIGenerator(this.repoRoot, this.data),
+            new AutomationGenerator(this.repoRoot, this.data),
+            new ObjectsGenerator(this.repoRoot, this.data),
+            new IntegrationsGenerator(this.repoRoot, this.data),
+            new ArchitectureGenerator(this.repoRoot, this.data),
+            new CrossReferenceGenerator(this.repoRoot, this.data),
+            new DeploymentGenerator(this.repoRoot, this.data),
+            new MaintenanceGenerator(this.repoRoot, this.data),`n            new FunctionalMapGenerator(this.repoRoot, this.data),
+        ];
+        
+        // Generate pages
+        for (const generator of generators) {
+            try {
+                await generator.generate();
+            } catch (error) {
+                console.error(`Error in ${generator.constructor.name}:`, error.message);
+            }
+        }
+        
+        // Generate index page (using existing method for now)
+        await this.analyzer.generateIndex();
+        
+        // Generate search index (after all pages are created)
+        try {
+            const searchIndexGenerator = new SearchIndexGenerator(this.repoRoot, this.data);
+            await searchIndexGenerator.generate();
+        } catch (error) {
+            console.error('Error generating search index:', error.message);
+        }
+        
+        console.log('\nDocumentation generation complete!');
+    }
+    
+    /**
+     * Main entry point
+     */
+    async generateAll() {
+        await this.analyzeAll();
+        
+        console.log('\nGenerating web application...');
+        await this.generate();
+    }
+}
+
+// Main execution
+// Check if this file is being run directly (not imported as a module)
+const isMainModule = process.argv[1] && (
+    process.argv[1].endsWith('generate.js') ||
+    process.argv[1].endsWith('generate') ||
+    process.argv[1].endsWith('generate-docs.js') ||
+    process.argv[1].endsWith('generate-docs')
+);
+
+if (isMainModule) {
+    const repoRoot = process.argv[2] || path.join(__dirname, '..');
+    const generator = new ModularDocGenerator(repoRoot);
+    generator.generateAll().catch(error => {
+        console.error('Error generating documentation:', error);
+        process.exit(1);
+    });
+}
+
+export { ModularDocGenerator };
+
+
+
+

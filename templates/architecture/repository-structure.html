@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Repository Structure - Salesforce Technical Documentation</title>
+    <link rel="stylesheet" href="../../css/styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-left">
+                <h1 class="logo"><a href="../../index.html">Salesforce Technical Documentation</a></h1>
+            </div>
+            <nav class="breadcrumb">
+                <a href="../../index.html">Home</a> / Repository Structure
+            </nav>
+        </header>
+        
+        <div class="content-wrapper">
+            <nav class="sidebar">
+                <div class="nav-section">
+                    <h3>Architecture Navigation</h3>
+                    <ul>
+                        <li><a href="index.html">Overview</a></li>
+                        <li><a href="repository-structure.html" class="active">Repository Structure</a></li>
+                    </ul>
+                </div>
+                <div class="nav-section">
+                    <h3>Main Navigation</h3>
+                    <ul>
+                        <li><a href="../../index.html">🏠 Quickstart</a></li>
+                        <li><a href="../profiles/navigation-map.html">🗺️ Profile Navigation</a></li>
+                        <li><a href="../profiles/index.html">🔒 Security & Access</a></li>
+                        <li><a href="../objects/index.html">📊 Data Model</a></li>
+                        <li><a href="../ui/index.html">🎨 UI Layer</a></li>
+                        <li><a href="../apex/index.html">⚙️ Apex Layer</a></li>
+                        <li><a href="../automation/index.html">🔄 Automation</a></li>
+                        <li><a href="../integrations/index.html">🔌 Integrations</a></li>
+                        <li><a href="index.html">🏗️ Architecture</a></li>
+                        <li><a href="../deployment/index.html">🚀 Deployment</a></li>
+                        <li><a href="../maintenance/index.html">🛠️ Maintenance & Support</a></li>
+                        <li><a href="../cross-reference/index.html">🔗 Cross-Reference</a></li>
+                    </ul>
+                </div>
+            </nav>
+            
+            <main class="main-content">
+                <h2>Repository Structure</h2>
+                
+                <section>
+                    <h3>Directory Overview</h3>
+                    <p>The repository follows the standard Salesforce DX project structure:</p>
+                    
+                    <div class="info-box">
+                        <h4>force-app/main/default/</h4>
+                        <ul>
+                            <li><strong>classes/</strong> - 1977 Apex classes</li>
+                            <li><strong>triggers/</strong> - 58 Apex triggers</li>
+                            <li><strong>lwc/</strong> - 1614 Lightning Web Components</li>
+                            <li><strong>permissionsets/</strong> - 124 Permission Sets</li>
+                            <li><strong>flows/</strong> - 332 Flows</li>
+                            <li><strong>objects/</strong> - Custom objects and fields</li>
+                            <li><strong>applications/</strong> - Custom applications</li>
+                            <li><strong>namedCredentials/</strong> - Named credentials for integrations</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="info-box">
+                        <h4>force-app/main/env-dependent/</h4>
+                        <ul>
+                            <li><strong>flexipages/</strong> - 118 FlexiPages</li>
+                            <li><strong>dashboards/</strong> - Environment-specific dashboards</li>
+                            <li><strong>reports/</strong> - Environment-specific reports</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="info-box">
+                        <h4>releases/R1/metadata/profiles/</h4>
+                        <ul>
+                            <li><strong>profiles/</strong> - 47 Profile definitions</li>
+                        </ul>
+                    </div>
+                </section>
+                
+                <section>
+                    <h3>Component Statistics</h3>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <h3>1977</h3>
+                            <p>Apex Classes</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3>1614</h3>
+                            <p>LWC Components</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3>58</h3>
+                            <p>Triggers</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3>332</h3>
+                            <p>Flows</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3>47</h3>
+                            <p>Profiles</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3>124</h3>
+                            <p>Permission Sets</p>
+                        </div>
+                    </div>
+                </section>
+            </main>
+        </div>
+        
+        <footer>
+            <p>Salesforce Technical Documentation</p>
+        </footer>
+    </div>
+    <script src="../../js/app.js"></script>
+</body>
+</html>

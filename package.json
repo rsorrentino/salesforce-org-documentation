@@ -1,0 +1,46 @@
+{
+  "name": "salesforce-documentation-portal",
+  "version": "1.0.0",
+  "description": "Salesforce Technical Documentation Portal - Static Web App Generator",
+  "main": "generate.js",
+  "type": "module",
+  "scripts": {
+    "init": "node init.js",
+    "generate": "node generate.js",
+    "generate:source": "node generate.js --source",
+    "update": "node update.js",
+    "start": "node generate.js",
+    "serve": "node serve.js",
+    "serve:port": "node serve.js",
+    "dev": "node generate.js && node serve.js",
+    "regenerate": "node generate.js",
+    "cleanup": "node cleanup.js",
+    "clean": "node cleanup.js",
+    "reset": "node cleanup.js && node init.js",
+    "fresh": "node cleanup.js && node generate.js",
+    "link-check": "node link-checker.js",
+    "link-check:warn": "node link-checker.js --warn-only",
+    "ci": "node generate.js && node link-checker.js"
+  },
+  "keywords": [
+    "salesforce",
+    "documentation",
+    "generator",
+    "static-site",
+    "amplifon"
+  ],
+  "author": "Salesforce Technical Documentation Team",
+  "license": "MIT",
+  "dependencies": {
+    "fast-xml-parser": "^4.3.5",
+    "mermaid": "^11.12.2",
+    "xml2js": "^0.6.2"
+  },
+  "devDependencies": {
+    "glob": "^13.0.0",
+    "http-server": "^14.1.1"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}

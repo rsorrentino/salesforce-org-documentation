@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Documentation Health - Salesforce Technical Documentation</title>
+    <link rel="stylesheet" href="../../css/styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-left">
+                <h1 class="logo"><a href="../../index.html">Salesforce Technical Documentation</a></h1>
+            </div>
+            <nav class="breadcrumb">
+                <a href="../../index.html">Home</a> / <a href="index.html">Maintenance</a> / Documentation Health
+            </nav>
+        </header>
+
+        <div class="content-wrapper">
+            <nav class="sidebar">
+                <div class="nav-section">
+                    <h3>Maintenance Navigation</h3>
+                    <ul>
+                        <li><a href="index.html">Overview</a></li>
+                        <li><a href="health.html" class="active">Documentation Health</a></li>
+                    </ul>
+                </div>
+            </nav>
+
+            <main class="main-content">
+                <h2>Documentation Health</h2>
+
+                <section>
+                    <h3>Coverage Summary</h3>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <h3>{{APEX_TOTAL}}</h3>
+                            <p>Apex Classes</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3>{{FLOW_TOTAL}}</h3>
+                            <p>Flows</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3>{{LWC_TOTAL}}</h3>
+                            <p>LWC Components</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3>{{OBJECT_TOTAL}}</h3>
+                            <p>Objects</p>
+                        </div>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Quality Signals</h3>
+                    <div class="table-container">
+                        <table class="data-table compact">
+                            <thead>
+                                <tr>
+                                    <th>Area</th>
+                                    <th>Metric</th>
+                                    <th>Count</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr><td>Apex</td><td>Test Classes</td><td>{{APEX_TESTS}}</td></tr>
+                                <tr><td>Apex</td><td>Missing Descriptions</td><td>{{APEX_NO_DESC}}</td></tr>
+                                <tr><td>Flows</td><td>Active</td><td>{{FLOW_ACTIVE}}</td></tr>
+                                <tr><td>Flows</td><td>Inactive</td><td>{{FLOW_INACTIVE}}</td></tr>
+                                <tr><td>LWC</td><td>With Apex Calls</td><td>{{LWC_WITH_APEX}}</td></tr>
+                                <tr><td>LWC</td><td>Without Apex Calls</td><td>{{LWC_NO_APEX}}</td></tr>
+                                <tr><td>Objects</td><td>Custom Objects</td><td>{{OBJECT_CUSTOM}}</td></tr>
+                                <tr><td>Objects</td><td>Record Types</td><td>{{RECORD_TYPES_TOTAL}}</td></tr>
+                                <tr><td>Objects</td><td>Validation Rules</td><td>{{VALIDATION_RULES_TOTAL}}</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Potential Orphans</h3>
+                    <p class="muted">These lists show components with no tracked entry points. Some may still be used via configuration or external calls.</p>
+                    <div class="architecture-layers">
+                        <div class="layer">
+                            <h4>Apex Classes (Not Referenced)</h4>
+                            {{UNUSED_APEX_LIST}}
+                        </div>
+                        <div class="layer">
+                            <h4>LWC Components (Not on FlexiPages)</h4>
+                            {{UNUSED_LWC_LIST}}
+                        </div>
+                        <div class="layer">
+                            <h4>Flows (No Tracked Entry Points)</h4>
+                            {{UNUSED_FLOW_LIST}}
+                        </div>
+                    </div>
+                </section>
+            </main>
+        </div>
+
+        <footer>
+            <p>Salesforce Technical Documentation</p>
+        </footer>
+    </div>
+    <script src="../../js/app.js"></script>
+</body>
+</html>

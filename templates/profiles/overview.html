@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Security &amp; Access Model - Salesforce Technical Documentation</title>
+    <link rel="stylesheet" href="../../css/styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-left">
+                <h1 class="logo"><a href="../../index.html">Salesforce Technical Documentation</a></h1>
+            </div>
+            <nav class="breadcrumb">
+                <a href="../../index.html">Home</a> / Security &amp; Access Model
+            </nav>
+        </header>
+
+        <div class="content-wrapper">
+            <nav class="sidebar">
+                <div class="nav-section">
+                    <h3>Security Navigation</h3>
+                    <ul>
+                        <li><a href="index.html" class="active">Overview</a></li>
+                        <li><a href="navigation-map.html">Profile Map</a></li>
+                    </ul>
+                </div>
+            </nav>
+
+            <main class="main-content">
+                <h2>Security &amp; Access Model</h2>
+
+                <section>
+                    <h3>Overview</h3>
+                    <p>The security model is based on Profiles, Permission Sets, Roles, and Queues providing role-based access control across the system.</p>
+
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <h3>{{PROFILES_COUNT}}</h3>
+                            <p>Profiles</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3>{{PERMISSIONSETS_COUNT}}</h3>
+                            <p>Permission Sets</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3>{{PERMISSIONSETGROUPS_COUNT}}</h3>
+                            <p>Permission Set Groups</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3>{{ROLES_COUNT}}</h3>
+                            <p>Roles</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3>{{QUEUES_COUNT}}</h3>
+                            <p>Queues</p>
+                        </div>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Start Here</h3>
+                    <div class="info-box">
+                        <p><strong>Recommended:</strong> Open the <a href="navigation-map.html">Profile Navigation Map</a> to navigate use-cases starting from Profiles.</p>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Security Matrix</h3>
+                    <p>Use the matrix to compare object access across profiles and permission sets.</p>
+                    <p><a href="permissions-matrix.html" class="btn">Open Security Matrix</a></p>
+                </section>
+
+                <section id="profiles">
+                    <h3>Profiles</h3>
+                    <p>Profiles define the base permissions for users.</p>
+                    {{PROFILES_LIST}}
+                </section>
+
+                <section id="permissionsets">
+                    <h3>Permission Sets</h3>
+                    <p>Permission Sets extend Profile permissions with additional access.</p>
+                    {{PERMISSIONSETS_LIST}}
+                </section>
+
+                <section id="roles">
+                    <h3>Roles</h3>
+                    <p>Roles define the record-level sharing hierarchy.</p>
+                    {{ROLES_LIST}}
+                </section>
+
+                <section id="queues">
+                    <h3>Queues</h3>
+                    <p>Queues are used to route work items and cases to groups of users.</p>
+                    {{QUEUES_LIST}}
+                </section>
+            </main>
+        </div>
+
+        <footer>
+            <p>Salesforce Technical Documentation</p>
+        </footer>
+    </div>
+    <script src="../../js/app.js"></script>
+    <script src="../../js/pagination.js"></script>
+</body>
+</html>
