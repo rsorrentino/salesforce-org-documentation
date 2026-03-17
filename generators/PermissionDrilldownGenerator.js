@@ -15,8 +15,8 @@
 import { BaseGenerator } from './BaseGenerator.js';
 
 export class PermissionDrilldownGenerator extends BaseGenerator {
-    constructor(repoRoot, data) {
-        super(repoRoot, data);
+    constructor(repoRoot, data, toolDir) {
+        super(repoRoot, data, toolDir);
         this.type = 'profiles';
     }
 

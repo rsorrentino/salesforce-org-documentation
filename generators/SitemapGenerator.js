@@ -23,8 +23,8 @@ export class SitemapGenerator extends BaseGenerator {
      *                                Falls back to the DOCS_BASE_URL env var, then
      *                                a relative placeholder so the file is still valid.
      */
-    constructor(repoRoot, data, siteBaseUrl) {
-        super(repoRoot, data);
+    constructor(repoRoot, data, siteBaseUrl, toolDir) {
+        super(repoRoot, data, toolDir);
         this.siteBaseUrl = (
             siteBaseUrl ||
             process.env.DOCS_BASE_URL ||

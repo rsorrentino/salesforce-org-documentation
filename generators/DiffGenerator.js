@@ -19,8 +19,8 @@ import path from 'path';
 import { BaseGenerator } from './BaseGenerator.js';
 
 export class DiffGenerator extends BaseGenerator {
-    constructor(repoRoot, data) {
-        super(repoRoot, data);
+    constructor(repoRoot, data, toolDir) {
+        super(repoRoot, data, toolDir);
         this.type = 'maintenance';
         this.snapshotFile = path.join(this.outputDir, 'data', 'metadata-snapshot.json');
     }

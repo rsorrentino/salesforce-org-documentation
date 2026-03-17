@@ -15,9 +15,9 @@ export class BaseGenerator {
      * @param {string} repoRoot - Root path of the Salesforce repository
      * @param {Object} data - Shared data object containing all analyzed metadata
      */
-    constructor(repoRoot, data) {
+    constructor(repoRoot, data, toolDir) {
         this.repoRoot = path.resolve(repoRoot);
-        this.outputDir = path.join(this.repoRoot, 'documentation-portal');
+        this.outputDir = toolDir ? path.resolve(toolDir) : path.join(this.repoRoot, 'documentation-portal');
         this.templatesDir = path.join(this.outputDir, 'templates');
         this.pagesDir = path.join(this.outputDir, 'pages');
         this.data = data;

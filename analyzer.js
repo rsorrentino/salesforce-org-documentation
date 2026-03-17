@@ -14,14 +14,16 @@ class SalesforceDocGenerator {
      * a comprehensive static web documentation portal using templates.
      */
     
-    constructor(repoRoot) {
+    constructor(repoRoot, toolDir) {
         /**
          * Initialize the documentation generator.
-         * 
-         * @param {string} repoRoot - Root path of the Salesforce repository to analyze
+         *
+         * @param {string} repoRoot  - Root path of the Salesforce repository to analyze
+         * @param {string} [toolDir] - Root of the documentation-portal tool itself (where pages/, templates/, css/, js/ live).
+         *                             When omitted the tool is assumed to live at <repoRoot>/documentation-portal (legacy behaviour).
          */
         this.repoRoot = path.resolve(repoRoot || path.join(__dirname, '..'));
-        this.outputDir = path.join(this.repoRoot, 'documentation-portal');
+        this.outputDir = path.resolve(toolDir || path.join(this.repoRoot, 'documentation-portal'));
         this.templatesDir = path.join(this.outputDir, 'templates');
         this.data = {
             profiles: {},

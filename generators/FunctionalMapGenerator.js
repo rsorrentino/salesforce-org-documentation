@@ -10,8 +10,8 @@
 import { BaseGenerator } from './BaseGenerator.js';
 
 export class FunctionalMapGenerator extends BaseGenerator {
-  constructor(repoRoot, data) {
-    super(repoRoot, data);
+  constructor(repoRoot, data, toolDir) {
+    super(repoRoot, data, toolDir);
     this.type = 'architecture'; // writes under pages/architecture/
   }
 

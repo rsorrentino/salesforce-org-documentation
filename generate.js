@@ -42,11 +42,11 @@ import { SalesforceDocGenerator } from './analyzer.js';
 class ModularDocGenerator {
     constructor(repoRoot) {
         this.repoRoot = path.resolve(repoRoot || path.join(__dirname, '..'));
-        this.outputDir = path.join(this.repoRoot, 'documentation-portal');
+        this.toolDir = __dirname;
         this.data = {};
-        
-        // Use the existing analyzer for now
-        this.analyzer = new SalesforceDocGenerator(repoRoot);
+
+        // Use the existing analyzer — pass toolDir so index.html is written to the right place
+        this.analyzer = new SalesforceDocGenerator(repoRoot, __dirname);
     }
     
     /**
@@ -64,12 +64,12 @@ class ModularDocGenerator {
         console.log('Generating documentation with modular generators...\n');
         
         // Ensure directories exist
-        await fs.mkdir(path.join(this.outputDir, 'pages'), { recursive: true });
-        await fs.mkdir(path.join(this.outputDir, 'templates'), { recursive: true });
+        await fs.mkdir(path.join(this.toolDir, 'pages'), { recursive: true });
+        await fs.mkdir(path.join(this.toolDir, 'templates'), { recursive: true });
         
         // ── Diff: snapshot old metadata BEFORE generating pages ──────────────
         try {
-            const diffGen = new DiffGenerator(this.repoRoot, this.data);
+            const diffGen = new DiffGenerator(this.repoRoot, this.data, this.toolDir);
             await diffGen.generate();
         } catch (error) {
             console.error('Error in DiffGenerator:', error.message);
@@ -77,21 +77,21 @@ class ModularDocGenerator {
 
         // Initialize content generators
         const generators = [
-            new FlowsGenerator(this.repoRoot, this.data),
-            new ProfilesGenerator(this.repoRoot, this.data),
-            new ApexGenerator(this.repoRoot, this.data),
-            new ObjectsGenerator(this.repoRoot, this.data),
-            new UIGenerator(this.repoRoot, this.data),
-            new AutomationGenerator(this.repoRoot, this.data),
-            new IntegrationsGenerator(this.repoRoot, this.data),
-            new ArchitectureGenerator(this.repoRoot, this.data),
-            new CrossReferenceGenerator(this.repoRoot, this.data),
-            new DeploymentGenerator(this.repoRoot, this.data),
-            new MaintenanceGenerator(this.repoRoot, this.data),
-            new FunctionalMapGenerator(this.repoRoot, this.data),
-            new DashboardGenerator(this.repoRoot, this.data),
-            new PermissionDrilldownGenerator(this.repoRoot, this.data),
-            new CustomMetadataGenerator(this.repoRoot, this.data),
+            new FlowsGenerator(this.repoRoot, this.data, this.toolDir),
+            new ProfilesGenerator(this.repoRoot, this.data, this.toolDir),
+            new ApexGenerator(this.repoRoot, this.data, this.toolDir),
+            new ObjectsGenerator(this.repoRoot, this.data, this.toolDir),
+            new UIGenerator(this.repoRoot, this.data, this.toolDir),
+            new AutomationGenerator(this.repoRoot, this.data, this.toolDir),
+            new IntegrationsGenerator(this.repoRoot, this.data, this.toolDir),
+            new ArchitectureGenerator(this.repoRoot, this.data, this.toolDir),
+            new CrossReferenceGenerator(this.repoRoot, this.data, this.toolDir),
+            new DeploymentGenerator(this.repoRoot, this.data, this.toolDir),
+            new MaintenanceGenerator(this.repoRoot, this.data, this.toolDir),
+            new FunctionalMapGenerator(this.repoRoot, this.data, this.toolDir),
+            new DashboardGenerator(this.repoRoot, this.data, this.toolDir),
+            new PermissionDrilldownGenerator(this.repoRoot, this.data, this.toolDir),
+            new CustomMetadataGenerator(this.repoRoot, this.data, this.toolDir),
         ];
 
         // Generate pages
@@ -108,7 +108,7 @@ class ModularDocGenerator {
 
         // Generate search index (after all pages are created)
         try {
-            const searchIndexGenerator = new SearchIndexGenerator(this.repoRoot, this.data);
+            const searchIndexGenerator = new SearchIndexGenerator(this.repoRoot, this.data, this.toolDir);
             await searchIndexGenerator.generate();
         } catch (error) {
             console.error('Error generating search index:', error.message);
@@ -117,7 +117,7 @@ class ModularDocGenerator {
         // ── Sitemap + canonical links (post-processing: all pages must exist) ─
         try {
             const siteBaseUrl = process.env.DOCS_BASE_URL || '';
-            const sitemapGen = new SitemapGenerator(this.repoRoot, this.data, siteBaseUrl);
+            const sitemapGen = new SitemapGenerator(this.repoRoot, this.data, siteBaseUrl, this.toolDir);
             await sitemapGen.generate();
         } catch (error) {
             console.error('Error in SitemapGenerator:', error.message);

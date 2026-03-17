@@ -9,8 +9,8 @@ import { BaseGenerator } from './BaseGenerator.js';
 import path from 'path';
 
 export class DeploymentGenerator extends BaseGenerator {
-    constructor(repoRoot, data) {
-        super(repoRoot, data);
+    constructor(repoRoot, data, toolDir) {
+        super(repoRoot, data, toolDir);
         this.type = 'deployment';
     }
     

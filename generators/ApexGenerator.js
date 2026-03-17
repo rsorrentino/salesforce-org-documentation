@@ -11,8 +11,8 @@ import path from 'path';
 import fs from 'fs/promises';
 
 export class ApexGenerator extends BaseGenerator {
-    constructor(repoRoot, data) {
-        super(repoRoot, data);
+    constructor(repoRoot, data, toolDir) {
+        super(repoRoot, data, toolDir);
         this.type = 'apex';
     }
     
