@@ -16,7 +16,7 @@
                 <a href="../../index.html">Home</a> / Cross-Reference Index
             </nav>
         </header>
-        
+
         <div class="content-wrapper">
             <nav class="sidebar">
                 <div class="nav-section">
@@ -25,213 +25,31 @@
                         <li><a href="index.html" class="active">Overview</a></li>
                     </ul>
                 </div>
-                <div class="nav-section">
-                    <h3>Main Navigation</h3>
-                    <ul>
-                        <li><a href="../../index.html">🏠 Quickstart</a></li>
-                        <li><a href="../profiles/navigation-map.html">🗺️ Profile Navigation</a></li>
-                        <li><a href="../profiles/index.html">🔒 Security & Access</a></li>
-                        <li><a href="../objects/index.html">📊 Data Model</a></li>
-                        <li><a href="../ui/index.html">🎨 UI Layer</a></li>
-                        <li><a href="../apex/index.html">⚙️ Apex Layer</a></li>
-                        <li><a href="../automation/index.html">🔄 Automation</a></li>
-                        <li><a href="../integrations/index.html">🔌 Integrations</a></li>
-                        <li><a href="../architecture/index.html">🏗️ Architecture</a></li>
-                        <li><a href="../deployment/index.html">🚀 Deployment</a></li>
-                        <li><a href="../maintenance/index.html">🛠️ Maintenance & Support</a></li>
-                        <li><a href="index.html" class="active">🔗 Cross-Reference</a></li>
-                    </ul>
-                </div>
             </nav>
-            
+
             <main class="main-content">
                 <h2>Cross-Reference Index</h2>
-                
+
                 <section>
                     <h3>Component Relationships</h3>
-                    <p>This section shows how components relate to each other across the system.</p>
-                </section>
-                
-                <section>
-                    <h3>Apex Classes Used by LWC Components</h3>
+                    <p>This section shows how components relate to each other across the system. Total relationships: {{RELATIONSHIPS_COUNT}}</p>
                     <div class="table-container">
                         <table class="data-table">
                             <thead>
                                 <tr>
-                                    <th>Apex Class</th>
-                                    <th>Used By LWC Components</th>
-                                    <th>Count</th>
+                                    <th>Source Type</th>
+                                    <th>Source Name</th>
+                                    <th>Target Type</th>
+                                    <th>Target Count</th>
                                 </tr>
                             </thead>
-                            <tbody>
-
-                                <tr>
-                                    <td><a href="apex-UpdateAccountRelationshipController.html">UpdateAccountRelationshipController</a></td>
-                                    <td>startRepairProcess, updateAccountRelationship</td>
-                                    <td>2</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </section>
-                
-                <section>
-                    <h3>LWC Components Used in FlexiPages</h3>
-                    <div class="table-container">
-                        <table class="data-table">
-                            <thead>
-                                <tr>
-                                    <th>LWC Component</th>
-                                    <th>Used In FlexiPages</th>
-                                    <th>Count</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-
-                            </tbody>
-                        </table>
-                    </div>
-                </section>
-                
-                <section>
-                    <h3>Triggers by Object</h3>
-                    <div class="table-container">
-                        <table class="data-table">
-                            <thead>
-                                <tr>
-                                    <th>Object</th>
-                                    <th>Triggers</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-
-                                <tr>
-                                    <td>AmpPromotion</td>
-                                    <td>AmpPromotionTrigger</td>
-                                </tr>
-                                <tr>
-                                    <td>AmplicardOptinOptout</td>
-                                    <td>AmplicardOptinOptoutTrigger</td>
-                                </tr>
-                                <tr>
-                                    <td>AmplifonAccount</td>
-                                    <td>AmplifonAccountTrigger</td>
-                                </tr>
-                                <tr>
-                                    <td>AmplifonApprovalRequest</td>
-                                    <td>AmplifonApprovalRequestTrigger</td>
-                                </tr>
-                                <tr>
-                                    <td>AmplifonAsset</td>
-                                    <td>AmplifonAssetTrigger</td>
-                                </tr>
-                                <tr>
-                                    <td>AmplifonAssignedResource</td>
-                                    <td>AmplifonAssignedResourceTrigger</td>
-                                </tr>
-                                <tr>
-                                    <td>AmplifonAttachment</td>
-                                    <td>AmplifonAttachmentTrigger</td>
-                                </tr>
-                                <tr>
-                                    <td>AmplifonCallCenterTeam</td>
-                                    <td>AmplifonCallCenterTeamTrigger</td>
-                                </tr>
-                                <tr>
-                                    <td>AmplifonCampaign</td>
-                                    <td>AmplifonCampaignTrigger</td>
-                                </tr>
-                                <tr>
-                                    <td>AmplifonCampaignMember2</td>
-                                    <td>AmplifonCampaignMemberTrigger2</td>
-                                </tr>
-                                <tr>
-                                    <td>AmplifonCase</td>
-                                    <td>AmplifonCaseTrigger</td>
-                                </tr>
-                                <tr>
-                                    <td>AmplifonCatchmentArea</td>
-                                    <td>AmplifonCatchmentAreaTrigger</td>
-                                </tr>
-                                <tr>
-                                    <td>AmplifonCustomerCode</td>
-                                    <td>AmplifonCustomerCodeTrigger</td>
-                                </tr>
-                                <tr>
-                                    <td>AmplifonCustomerOrder</td>
-                                    <td>AmplifonCustomerOrderTrigger</td>
-                                </tr>
-                                <tr>
-                                    <td>AmplifonDocument</td>
-                                    <td>AmplifonDocumentTrigger</td>
-                                </tr>
-                                <tr>
-                                    <td>AmplifonEvent</td>
-                                    <td>AmplifonEventTrigger</td>
-                                </tr>
-                                <tr>
-                                    <td>AmplifonInteraction2</td>
-                                    <td>AmplifonInteractionTrigger2</td>
-                                </tr>
-                                <tr>
-                                    <td>AmplifonNextSession</td>
-                                    <td>AmplifonNextSessionTrigger</td>
-                                </tr>
-                                <tr>
-                                    <td>AmplifonOpportunity</td>
-                                    <td>AmplifonOpportunityTrigger</td>
-                                </tr>
-                                <tr>
-                                    <td>AmplifonOrder</td>
-                                    <td>AmplifonOrderTrigger</td>
-                                </tr>
-                                <tr>
-                                    <td>AmplifonOrderItem</td>
-                                    <td>AmplifonOrderItemTrigger</td>
-                                </tr>
-                                <tr>
-                                    <td>AmplifonParty</td>
-                                    <td>AmplifonPartyTrigger</td>
-                                </tr>
-                                <tr>
-                                    <td>AmplifonPartyRelationship</td>
-                                    <td>AmplifonPartyRelationshipTrigger</td>
-                                </tr>
-                                <tr>
-                                    <td>AmplifonServiceAppointment</td>
-                                    <td>AmplifonServiceAppointmentTrigger</td>
-                                </tr>
-                                <tr>
-                                    <td>AmplifonServiceResourceSkill</td>
-                                    <td>AmplifonServiceResourceSkillTrigger</td>
-                                </tr>
-                                <tr>
-                                    <td>AmplifonServiceTerritory</td>
-                                    <td>AmplifonServiceTerritoryTrigger</td>
-                                </tr>
-                                <tr>
-                                    <td>AmplifonServiceTerritoryMember</td>
-                                    <td>AmplifonServiceTerritoryMemberTrigger</td>
-                                </tr>
-                                <tr>
-                                    <td>AmplifonShift</td>
-                                    <td>AmplifonShiftTrigger</td>
-                                </tr>
-                                <tr>
-                                    <td>AmplifonStoreInteraction</td>
-                                    <td>AmplifonStoreInteractionTrigger</td>
-                                </tr>
-                                <tr>
-                                    <td>AmplifonTask</td>
-                                    <td>AmplifonTaskTrigger</td>
-                                </tr>
-                            </tbody>
+                            {{RELATIONSHIPS_TABLE}}
                         </table>
                     </div>
                 </section>
             </main>
         </div>
-        
+
         <footer>
             <p>Salesforce Technical Documentation</p>
         </footer>

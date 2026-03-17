@@ -119,10 +119,10 @@ export class ApexGenerator extends BaseGenerator {
     <div class="container">
         <header>
             <div class="header-left">
-                <h1 class="logo"><a href="../index.html">Salesforce Technical Documentation</a></h1>
+                <h1 class="logo"><a href="../../index.html">Salesforce Technical Documentation</a></h1>
             </div>
             <nav class="breadcrumb">
-                <a href="../index.html">Home</a> / <a href="index.html">Apex Layer</a> / Class: ${this.escapeHtml(className)}
+                <a href="../../index.html">Home</a> / <a href="index.html">Apex Layer</a> / Class: ${this.escapeHtml(className)}
             </nav>
         </header>
         <div class="content-wrapper">
