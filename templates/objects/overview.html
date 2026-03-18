@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Data Model - Salesforce Technical Documentation</title>
     <link rel="stylesheet" href="../../css/styles.css">
-    <script src="../../js/vendor/mermaid.min.js"></script>
 </head>
 <body>
     <div class="container">
@@ -81,20 +80,15 @@
                             <p>Global Value Sets</p>
                         </div>
                     </div>
+                    <input type="text" class="search-box" placeholder="Search objects by name or label..." id="objectSearch" data-target-table="objectsTable" data-target-info="objectsPaginationInfo" style="margin-bottom: 1rem;">
                     {{OBJECTS_LIST}}
                 </section>
 
-                <section>
-                    <h3>Global Value Sets</h3>
+                <details>
+                    <summary><strong>Global Value Sets ({{GLOBAL_VALUE_SETS_COUNT}})</strong></summary>
                     <p>Picklist values shared across multiple objects.</p>
                     {{GLOBAL_VALUE_SETS_LIST}}
-                </section>
-
-                <section>
-                    <h3>Quick Search</h3>
-                    <p>Use the search box below to quickly find objects by name or label:</p>
-                    <input type="text" class="search-box" placeholder="Search objects..." id="objectSearch" data-target-table="objectsTable" data-target-info="objectsPaginationInfo">
-                </section>
+                </details>
             </main>
         </div>
 
@@ -103,6 +97,5 @@
         </footer>
     </div>
     <script src="../../js/app.js"></script>
-    <script src="../../js/pagination.js"></script>
 </body>
 </html>

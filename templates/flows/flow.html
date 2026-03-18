@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Flow: {{FLOW_NAME}} - Salesforce Technical Documentation</title>
     <link rel="stylesheet" href="../../css/styles.css">
-    <script src="../../js/vendor/mermaid.min.js"></script>
 </head>
 <body>
     <div class="container">
@@ -14,10 +13,10 @@
                 <h1 class="logo"><a href="../../index.html">Salesforce Technical Documentation</a></h1>
             </div>
             <nav class="breadcrumb">
-                <a href="../../index.html">Home</a> / <a href="../automation/index.html">Automation</a> / <a href="index.html">Flows</a> / Flow: {{FLOW_NAME}}
+                <a href="../../index.html">Home</a> / <a href="../automation/index.html">Automation</a> / <a href="index.html">Flows</a> / {{FLOW_NAME}}
             </nav>
         </header>
-        
+
         <div class="content-wrapper">
             <nav class="sidebar">
                 <div class="nav-section">
@@ -27,183 +26,171 @@
                         <li><a href="index.html">All Flows</a></li>
                     </ul>
                 </div>
-                <div class="nav-section">
-                    <h3>Main Navigation</h3>
-                    <ul>
-                        <li><a href="../../index.html">🏠 Quickstart</a></li>
-                        <li><a href="../profiles/navigation-map.html">🗺️ Profile Navigation</a></li>
-                        <li><a href="../profiles/index.html">🔒 Security & Access</a></li>
-                        <li><a href="../objects/index.html">📊 Data Model</a></li>
-                        <li><a href="../ui/index.html">🎨 UI Layer</a></li>
-                        <li><a href="../apex/index.html">⚙️ Apex Layer</a></li>
-                        <li><a href="../automation/index.html">🔄 Automation</a></li>
-                        <li><a href="../integrations/index.html">🔌 Integrations</a></li>
-                        <li><a href="../architecture/index.html">🏗️ Architecture</a></li>
-                        <li><a href="../deployment/index.html">🚀 Deployment</a></li>
-                        <li><a href="../maintenance/index.html">🛠️ Maintenance & Support</a></li>
-                        <li><a href="../cross-reference/index.html">🔗 Cross-Reference</a></li>
-                    </ul>
-                </div>
             </nav>
-            
+
             <main class="main-content">
-                <h2>Flow: {{FLOW_NAME}}</h2>
-                
-                <section>
-                    <h3>Flow Information</h3>
-                    <div class="info-box">
-                        <p><strong>Flow Name:</strong> {{FLOW_NAME}}</p>
-                        <p><strong>Label:</strong> {{FLOW_LABEL}}</p>
-                        <p><strong>Status:</strong> {{FLOW_STATUS}}</p>
-                        <p><strong>Process Type:</strong> {{FLOW_PROCESS_TYPE}}</p>
-                        <p><strong>API Version:</strong> {{FLOW_API_VERSION}}</p>
+
+                <!-- Title + badges -->
+                <div class="detail-header">
+                    <h2>{{FLOW_LABEL}}</h2>
+                    <div class="detail-badges">
+                        <span class="badge badge-info">{{FLOW_PROCESS_TYPE}}</span>
+                        <span class="badge badge-success">{{FLOW_STATUS}}</span>
+                        <span class="badge badge-secondary">API v{{FLOW_API_VERSION}}</span>
                     </div>
-                </section>
-                
+                    <p class="detail-api-name text-muted">API Name: <code>{{FLOW_NAME}}</code></p>
+                </div>
+
+                <!-- Component summary cards -->
+                <div class="stats-grid" style="--cols:4">
+                    <div class="stat-card">
+                        <h3>{{DECISIONS_COUNT}}</h3>
+                        <p>Decisions</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>{{RECORD_LOOKUPS_COUNT}}</h3>
+                        <p>Record Lookups</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>{{RECORD_UPDATES_COUNT}}</h3>
+                        <p>Record Updates</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>{{ACTIONS_COUNT}}</h3>
+                        <p>Actions</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>{{ASSIGNMENTS_COUNT}}</h3>
+                        <p>Assignments</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>{{RECORD_CREATES_COUNT}}</h3>
+                        <p>Record Creates</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>{{VARIABLES_COUNT}}</h3>
+                        <p>Variables</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>{{FORMULAS_COUNT}}</h3>
+                        <p>Formulas</p>
+                    </div>
+                </div>
+
+                <!-- Flow Diagram -->
                 <section>
                     <h3>Flow Diagram</h3>
                     <div class="uml-container">
-                        <div class="mermaid">
-{{MERMAID_DIAGRAM}}
-                        </div>
+                        <div class="mermaid">{{MERMAID_DIAGRAM}}</div>
                     </div>
                 </section>
-                
+
+                <!-- Where Used -->
                 <section>
-                    <h3>Flow Components</h3>
-                    
-                    <h4>Decisions ({{DECISIONS_COUNT}})</h4>
-                    <div class="table-container">
-                        <table class="data-table">
-                            <thead>
-                                <tr>
-                                    <th>Name</th>
-                                    <th>Label</th>
-                                    <th>Rules</th>
-                                </tr>
-                            </thead>
-                            {{DECISIONS_TABLE}}
-                        </table>
-                    </div>
-                    
-                    <h4>Record Lookups ({{RECORD_LOOKUPS_COUNT}})</h4>
-                    <div class="table-container">
-                        <table class="data-table">
-                            <thead>
-                                <tr>
-                                    <th>Name</th>
-                                    <th>Label</th>
-                                    <th>Object</th>
-                                </tr>
-                            </thead>
-                            {{RECORD_LOOKUPS_TABLE}}
-                        </table>
-                    </div>
-                    
-                    <h4>Record Updates ({{RECORD_UPDATES_COUNT}})</h4>
-                    <div class="table-container">
-                        <table class="data-table">
-                            <thead>
-                                <tr>
-                                    <th>Name</th>
-                                    <th>Label</th>
-                                </tr>
-                            </thead>
-                            {{RECORD_UPDATES_TABLE}}
-                        </table>
-                    </div>
-                    
-                    <h4>Record Creates ({{RECORD_CREATES_COUNT}})</h4>
-                    <div class="table-container">
-                        <table class="data-table">
-                            <thead>
-                                <tr>
-                                    <th>Name</th>
-                                    <th>Label</th>
-                                    <th>Next Element</th>
-                                </tr>
-                            </thead>
-                            {{RECORD_CREATES_TABLE}}
-                        </table>
-                    </div>
-                    
-                    <h4>Assignments ({{ASSIGNMENTS_COUNT}})</h4>
-                    <div class="table-container">
-                        <table class="data-table">
-                            <thead>
-                                <tr>
-                                    <th>Name</th>
-                                    <th>Label</th>
-                                    <th>Next Element</th>
-                                </tr>
-                            </thead>
-                            {{ASSIGNMENTS_TABLE}}
-                        </table>
-                    </div>
-                    
-                    <h4>Actions ({{ACTIONS_COUNT}})</h4>
-                    <div class="table-container">
-                        <table class="data-table">
-                            <thead>
-                                <tr>
-                                    <th>Name</th>
-                                    <th>Label</th>
-                                    <th>Type</th>
-                                    <th>Action Name</th>
-                                </tr>
-                            </thead>
-                            {{ACTIONS_TABLE}}
-                        </table>
-                    </div>
-                    
-                    <h4>Formulas ({{FORMULAS_COUNT}})</h4>
-                    <div class="table-container">
-                        <table class="data-table">
-                            <thead>
-                                <tr>
-                                    <th>Name</th>
-                                    <th>Expression</th>
-                                </tr>
-                            </thead>
-                            {{FORMULAS_TABLE}}
-                        </table>
-                    </div>
-                    
-                    <h4>Variables ({{VARIABLES_COUNT}})</h4>
-                    <div class="table-container">
-                        <table class="data-table">
-                            <thead>
-                                <tr>
-                                    <th>Name</th>
-                                    <th>Type</th>
-                                    <th>Input</th>
-                                </tr>
-                            </thead>
-                            {{VARIABLES_TABLE}}
-                        </table>
-                    </div>
-                </section>
-                
-                <section>
-                    <h3>Where it is Used</h3>
+                    <h3>Where It Is Used</h3>
                     <div class="info-box">
-                        <p>This section shows the relationships and dependencies for this flow.</p>
                         {{WHERE_USED}}
                     </div>
                 </section>
-                
+
+                <!-- Flow Components -->
                 <section>
-                    {{RELATIONSHIP_MAP}}
-                    </div>
+                    <h3>Flow Components</h3>
+
+                    <details open>
+                        <summary><strong>Decisions ({{DECISIONS_COUNT}})</strong></summary>
+                        <div class="table-container">
+                            <table class="data-table">
+                                <thead><tr><th>Name</th><th>Label</th><th>Rules</th></tr></thead>
+                                {{DECISIONS_TABLE}}
+                            </table>
+                        </div>
+                    </details>
+
+                    <details open>
+                        <summary><strong>Record Lookups ({{RECORD_LOOKUPS_COUNT}})</strong></summary>
+                        <div class="table-container">
+                            <table class="data-table">
+                                <thead><tr><th>Name</th><th>Label</th><th>Object</th></tr></thead>
+                                {{RECORD_LOOKUPS_TABLE}}
+                            </table>
+                        </div>
+                    </details>
+
+                    <details>
+                        <summary><strong>Record Updates ({{RECORD_UPDATES_COUNT}})</strong></summary>
+                        <div class="table-container">
+                            <table class="data-table">
+                                <thead><tr><th>Name</th><th>Label</th></tr></thead>
+                                {{RECORD_UPDATES_TABLE}}
+                            </table>
+                        </div>
+                    </details>
+
+                    <details>
+                        <summary><strong>Record Creates ({{RECORD_CREATES_COUNT}})</strong></summary>
+                        <div class="table-container">
+                            <table class="data-table">
+                                <thead><tr><th>Name</th><th>Label</th><th>Target</th></tr></thead>
+                                {{RECORD_CREATES_TABLE}}
+                            </table>
+                        </div>
+                    </details>
+
+                    <details>
+                        <summary><strong>Actions ({{ACTIONS_COUNT}})</strong></summary>
+                        <div class="table-container">
+                            <table class="data-table">
+                                <thead><tr><th>Name</th><th>Label</th><th>Type</th><th>Action</th></tr></thead>
+                                {{ACTIONS_TABLE}}
+                            </table>
+                        </div>
+                    </details>
+
+                    <details>
+                        <summary><strong>Assignments ({{ASSIGNMENTS_COUNT}})</strong></summary>
+                        <div class="table-container">
+                            <table class="data-table">
+                                <thead><tr><th>Name</th><th>Label</th><th>Target</th></tr></thead>
+                                {{ASSIGNMENTS_TABLE}}
+                            </table>
+                        </div>
+                    </details>
+
+                    <details>
+                        <summary><strong>Variables ({{VARIABLES_COUNT}})</strong></summary>
+                        <div class="table-container">
+                            <table class="data-table">
+                                <thead><tr><th>Name</th><th>Label</th><th>Data Type</th><th>Direction</th></tr></thead>
+                                {{VARIABLES_TABLE}}
+                            </table>
+                        </div>
+                    </details>
+
+                    <details>
+                        <summary><strong>Formulas ({{FORMULAS_COUNT}})</strong></summary>
+                        <div class="table-container">
+                            <table class="data-table">
+                                <thead><tr><th>Name</th><th>Label</th><th>Data Type</th></tr></thead>
+                                {{FORMULAS_TABLE}}
+                            </table>
+                        </div>
+                    </details>
                 </section>
+
+                <!-- Relationship Map -->
+                <section>
+                    <h3>Relationship Map</h3>
+                    {{RELATIONSHIP_MAP}}
+                </section>
+
             </main>
         </div>
-        
+
         <footer>
             <p>Salesforce Technical Documentation</p>
         </footer>
     </div>
     <script src="../../js/app.js"></script>
-    <script src="../../js/pagination.js"></script>
 </body>
 </html>

@@ -26,62 +26,57 @@
                         <li><a href="navigation-map.html">Profile Map</a></li>
                     </ul>
                 </div>
-                <div class="nav-section">
-                    <h3>Main Navigation</h3>
-                    <ul>
-                        <li><a href="../../index.html">🏠 Quickstart</a></li>
-                        <li><a href="navigation-map.html">🗺️ Profile Navigation</a></li>
-                        <li><a href="index.html" class="active">🔒 Security & Access</a></li>
-                        <li><a href="../objects/index.html">📊 Data Model</a></li>
-                        <li><a href="../ui/index.html">🎨 UI Layer</a></li>
-                        <li><a href="../apex/index.html">⚙️ Apex Layer</a></li>
-                        <li><a href="../automation/index.html">🔄 Automation</a></li>
-                        <li><a href="../integrations/index.html">🔌 Integrations</a></li>
-                        <li><a href="../architecture/index.html">🏗️ Architecture</a></li>
-                        <li><a href="../deployment/index.html">🚀 Deployment</a></li>
-                        <li><a href="../maintenance/index.html">🛠️ Maintenance & Support</a></li>
-                        <li><a href="../cross-reference/index.html">🔗 Cross-Reference</a></li>
-                    </ul>
-                </div>
             </nav>
             
             <main class="main-content">
-                <h2>Profile: {{PROFILE_NAME}}</h2>
-                
-                <section id="summary">
-                    <h3>Profile Summary</h3>
-                    <div class="info-box">
-                        <p><strong>Profile Name:</strong> {{PROFILE_NAME}}</p>
-                        <p><strong>Applications:</strong> {{APPLICATIONS_COUNT}}</p>
-                        <p><strong>Apex Classes:</strong> {{CLASSES_COUNT}}</p>
-                        <p><strong>Objects with Permissions:</strong> {{OBJECTS_COUNT}}</p>
-                        <p><strong>Pages:</strong> {{PAGES_COUNT}}</p>
+
+                <div class="detail-header">
+                    <h2>{{PROFILE_NAME}}</h2>
+                    <p class="detail-api-name text-muted">Profile</p>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h3>{{APPLICATIONS_COUNT}}</h3>
+                        <p>Applications</p>
                     </div>
-                </section>
-                
-                <section id="applications">
-                    <h3>Applications</h3>
+                    <div class="stat-card">
+                        <h3>{{CLASSES_COUNT}}</h3>
+                        <p>Apex Classes</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>{{OBJECTS_COUNT}}</h3>
+                        <p>Objects</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>{{PAGES_COUNT}}</h3>
+                        <p>VF Pages</p>
+                    </div>
+                </div>
+
+                <details open>
+                    <summary><strong>Applications ({{APPLICATIONS_COUNT}})</strong></summary>
                     <p>Applications visible to this profile:</p>
                     {{APPLICATIONS_LIST}}
-                </section>
-                
-                <section id="classes">
-                    <h3>Apex Classes</h3>
-                    <p>Apex classes accessible to this profile:</p>
-                    {{CLASSES_LIST}}
-                </section>
-                
-                <section id="objects">
-                    <h3>Object Permissions</h3>
+                </details>
+
+                <details open>
+                    <summary><strong>Object Permissions ({{OBJECTS_COUNT}})</strong></summary>
                     <p>Objects and their permissions for this profile:</p>
                     {{OBJECTS_LIST}}
-                </section>
-                
-                <section id="pages">
-                    <h3>Visualforce Pages</h3>
+                </details>
+
+                <details>
+                    <summary><strong>Apex Classes ({{CLASSES_COUNT}})</strong></summary>
+                    <p>Apex classes accessible to this profile:</p>
+                    {{CLASSES_LIST}}
+                </details>
+
+                <details>
+                    <summary><strong>Visualforce Pages ({{PAGES_COUNT}})</strong></summary>
                     <p>Visualforce pages accessible to this profile:</p>
                     {{PAGES_LIST}}
-                </section>
+                </details>
             </main>
         </div>
         

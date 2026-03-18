@@ -1863,3 +1863,60 @@ body[data-theme="dark"] .search-result-item:hover { background: rgba(248,113,113
 .data-table.compact th, .data-table.compact td { padding:.35rem .5rem; }
 .data-table.compact tbody tr:nth-child(even) td { background: rgba(0,0,0,0.03); }
 body[data-theme="dark"] .data-table.compact tbody tr:nth-child(even) td { background: #0e1626; }
+
+/* ── Detail page header ─────────────────────────────────────────────── */
+.detail-header {
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid var(--border-color);
+}
+.detail-header h2 { margin-bottom: 0.5rem; font-size: 1.6rem; }
+.detail-badges { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.5rem; }
+.detail-api-name { font-size: 0.85rem; margin-top: 0.25rem; }
+.detail-api-name code {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 0.1rem 0.4rem;
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+}
+.text-muted { color: var(--text-tertiary); }
+
+/* ── stats-grid column override ─────────────────────────────────────── */
+.stats-grid[style*="--cols:4"] { grid-template-columns: repeat(4, 1fr); }
+@media (max-width: 1024px) { .stats-grid[style*="--cols:4"] { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 768px)  { .stats-grid[style*="--cols:4"] { grid-template-columns: 1fr; } }
+
+/* ── Collapsible <details> sections ─────────────────────────────────── */
+details {
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    margin: 0.75rem 0;
+    background: var(--bg-card);
+}
+details summary {
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.95rem;
+    user-select: none;
+    border-radius: 6px;
+}
+details summary::-webkit-details-marker { display: none; }
+details summary::before {
+    content: '▶';
+    font-size: 0.65rem;
+    color: var(--text-tertiary);
+    transition: transform 0.2s;
+    flex-shrink: 0;
+}
+details[open] summary::before { transform: rotate(90deg); }
+details summary:hover { background: var(--bg-hover); }
+details .table-container { margin: 0; border-top: 1px solid var(--border-color); border-radius: 0 0 6px 6px; }
+details .table-container .data-table { border-radius: 0; }
+body[data-theme="dark"] details { background: var(--bg-card); border-color: var(--border-color); }
+body[data-theme="dark"] details summary:hover { background: var(--bg-hover); }

@@ -218,7 +218,7 @@ export class FlowsGenerator extends BaseGenerator {
             return cleaned.length ? cleaned : ' ';
         };
 
-        let mermaid = 'flowchart TD\n';
+        let mermaid = '%%{init: {"flowchart": {"curve": "basis", "htmlLabels": true}} }%%\nflowchart TD\n';
         const nodes = {};
         const edges = [];
         
@@ -335,54 +335,44 @@ export class FlowsGenerator extends BaseGenerator {
             }
         }
         
+        // Add end node definition first so edges can reference it
+        mermaid += '    End([End])\n';
+
         // Generate node definitions — always use quoted labels so parentheses,
         // dashes and other special chars inside the label text can't break Mermaid syntax.
         for (const [nodeName, nodeInfo] of Object.entries(nodes)) {
             const nodeLabel = nodeInfo.label;
             if (nodeInfo.type === 'decision') {
-                mermaid += `    ${nodeName}{{"${nodeLabel}"}}\n`;
+                mermaid += `    ${nodeName}{"${nodeLabel}"}\n`;
             } else {
                 mermaid += `    ${nodeName}["${nodeLabel}"]\n`;
             }
         }
-        
+
+        // Only emit edges where both source AND target are defined to prevent layout errors
+        const definedNodes = new Set(['Start', 'End', ...Object.keys(nodes)]);
+        const validEdges = edges.filter(([src, tgt]) => definedNodes.has(src) && definedNodes.has(tgt));
+
+        // Track which nodes appear as targets so we can find terminals
+        const targetNodes = new Set(validEdges.map(e => e[1]));
+
         // Generate edges
-        for (const edge of edges) {
-            const [source, target, label] = edge;
+        for (const [source, target, label] of validEdges) {
             if (label) {
-                // Do NOT HTML-escape Mermaid labels; sanitize earlier instead.
                 mermaid += `    ${source} -->|${sanitizeLabel(label, 24)}| ${target}\n`;
             } else {
                 mermaid += `    ${source} --> ${target}\n`;
             }
         }
-        
-        // Add end node
-        mermaid += '    End([End])\n';
-        
-        // Connect any unconnected nodes to End if no explicit connection
-        const connectedNodes = new Set();
-        edges.forEach(edge => {
-            connectedNodes.add(edge[0]);
-            connectedNodes.add(edge[1]);
-        });
-        
-        // Connect last nodes to End if not already connected
+
+        // Connect terminal nodes (not pointed to by anyone) to End
         const allNodeNames = Object.keys(nodes);
         if (allNodeNames.length > 0) {
-            // Find nodes that aren't targets of any edge (likely terminal nodes)
-            const terminalNodes = allNodeNames.filter(node => {
-                return !edges.some(edge => edge[1] === node && edge[0] !== 'Start');
-            });
-            
-            // Connect terminal nodes to End
-            for (const terminalNode of terminalNodes.slice(0, 5)) { // Limit to 5 to avoid clutter
-                if (terminalNode !== 'Start' && terminalNode !== 'End') {
-                    mermaid += `    ${terminalNode} --> End\n`;
-                }
+            const terminalNodes = allNodeNames.filter(n => !targetNodes.has(n) && n !== 'Start' && n !== 'End');
+            for (const t of terminalNodes.slice(0, 5)) {
+                mermaid += `    ${t} --> End\n`;
             }
-        } else if (edges.length === 0) {
-            // If no edges at all, connect Start to End
+        } else if (validEdges.length === 0) {
             mermaid += '    Start --> End\n';
         }
         
@@ -570,15 +560,16 @@ export class FlowsGenerator extends BaseGenerator {
         // Table format with ALL items (client-side JS will paginate)
         html += '<div class="table-container">\n';
         html += '<table class="data-table" id="flowsTable">\n';
-        html += '<thead><tr><th>Flow Name</th><th>Label</th><th>Status</th></tr></thead>\n';
+        html += '<thead><tr><th>Label</th><th>API Name</th><th>Type</th><th>Status</th></tr></thead>\n';
         html += '<tbody>\n';
-        
+
         for (const [flowName, flowData] of flows) {
-            const safeName = flowName.replace(/[^a-zA-Z0-9]/g, '_');
+            const statusClass = flowData.status === 'Active' ? 'badge-success' : (flowData.status === 'Obsolete' ? 'badge-danger' : 'badge-secondary');
             html += `            <tr>
-                <td><a href="flow-${this.sanitizeNodeName(flowName)}.html">${this.escapeHtml(flowName)}</a></td>
-                <td>${this.escapeHtml(flowData.label || flowName)}</td>
-                <td><span class="badge ${flowData.status === 'Active' ? 'badge-success' : 'badge-secondary'}">${this.escapeHtml(flowData.status || 'Unknown')}</span></td>
+                <td><a href="flow-${this.sanitizeNodeName(flowName)}.html"><strong>${this.escapeHtml(flowData.label || flowName)}</strong></a></td>
+                <td><code style="font-size:0.8rem">${this.escapeHtml(flowName)}</code></td>
+                <td><span class="badge badge-info">${this.escapeHtml(flowData.processType || 'Flow')}</span></td>
+                <td><span class="badge ${statusClass}">${this.escapeHtml(flowData.status || 'Unknown')}</span></td>
             </tr>\n`;
         }
         

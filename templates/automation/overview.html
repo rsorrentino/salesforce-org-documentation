@@ -81,41 +81,31 @@
                 </section>
 
                 <section>
-                    <h3>Approval Processes</h3>
+                    <div class="info-box">
+                        <p><strong>Flows</strong> — <a href="../flows/index.html">View all {{FLOWS_COUNT}} flows with diagrams &rarr;</a></p>
+                        <p><strong>Triggers</strong> — <a href="../apex/index.html">View {{TRIGGERS_COUNT}} triggers in the Apex layer &rarr;</a></p>
+                    </div>
+                </section>
+
+                <details open>
+                    <summary><strong>Approval Processes ({{APPROVAL_PROCESSES_COUNT}})</strong></summary>
                     {{APPROVAL_PROCESSES_LIST}}
-                </section>
+                </details>
 
-                <section>
-                    <h3>Workflows</h3>
+                <details open>
+                    <summary><strong>Workflows ({{WORKFLOWS_COUNT}})</strong></summary>
                     {{WORKFLOWS_LIST}}
-                </section>
+                </details>
 
-                <section>
-                    <h3>Quick Actions</h3>
+                <details>
+                    <summary><strong>Quick Actions ({{QUICK_ACTIONS_COUNT}})</strong></summary>
                     {{QUICK_ACTIONS_LIST}}
-                </section>
+                </details>
 
-                <section>
-                    <h3>Sharing Rules</h3>
+                <details>
+                    <summary><strong>Sharing Rules ({{SHARING_RULES_COUNT}})</strong></summary>
                     {{SHARING_RULES_LIST}}
-                </section>
-
-                <section>
-                    <h3>Triggers</h3>
-                    <p>Total Triggers: {{TRIGGERS_COUNT}}</p>
-                    <div class="info-box">
-                        <p>Triggers are organized by object and event type. Each trigger delegates to handler classes.</p>
-                        <p><a href="../apex/index.html">View Apex Layer for trigger details &rarr;</a></p>
-                    </div>
-                </section>
-
-                <section>
-                    <h3>Flows</h3>
-                    <p>Total Flows: {{FLOWS_COUNT}}</p>
-                    <div class="info-box">
-                        <p><a href="../flows/index.html">View all Flows with diagrams &rarr;</a></p>
-                    </div>
-                </section>
+                </details>
             </main>
         </div>
 
@@ -124,6 +114,5 @@
         </footer>
     </div>
     <script src="../../js/app.js"></script>
-    <script src="../../js/pagination.js"></script>
 </body>
 </html>

@@ -16,7 +16,7 @@
                 <a href="../../index.html">Home</a> / <a href="../automation/index.html">Automation</a> / Flows
             </nav>
         </header>
-        
+
         <div class="content-wrapper">
             <nav class="sidebar">
                 <div class="nav-section">
@@ -26,49 +26,30 @@
                         <li><a href="index.html" class="active">All Flows</a></li>
                     </ul>
                 </div>
-                <div class="nav-section">
-                    <h3>Main Navigation</h3>
-                    <ul>
-                        <li><a href="../../index.html">🏠 Quickstart</a></li>
-                        <li><a href="../profiles/navigation-map.html">🗺️ Profile Navigation</a></li>
-                        <li><a href="../profiles/index.html">🔒 Security & Access</a></li>
-                        <li><a href="../objects/index.html">📊 Data Model</a></li>
-                        <li><a href="../ui/index.html">🎨 UI Layer</a></li>
-                        <li><a href="../apex/index.html">⚙️ Apex Layer</a></li>
-                        <li><a href="../automation/index.html">🔄 Automation</a></li>
-                        <li><a href="../integrations/index.html">🔌 Integrations</a></li>
-                        <li><a href="../architecture/index.html">🏗️ Architecture</a></li>
-                        <li><a href="../deployment/index.html">🚀 Deployment</a></li>
-                        <li><a href="../maintenance/index.html">🛠️ Maintenance & Support</a></li>
-                        <li><a href="../cross-reference/index.html">🔗 Cross-Reference</a></li>
-                    </ul>
-                </div>
             </nav>
-            
+
             <main class="main-content">
                 <h2>Flows</h2>
-                
-                <section>
-                    <h3>Overview</h3>
-                    <p>This page lists all Salesforce Flows in the repository.</p>
+
+                <div class="stats-grid">
                     <div class="stat-card">
                         <h3>{{FLOWS_COUNT}}</h3>
                         <p>Total Flows</p>
                     </div>
-                </section>
-                
+                </div>
+
                 <section>
                     <h3>Flow List</h3>
+                    <p>Click any flow name to view its diagram, components, and relationships.</p>
                     {{FLOWS_LIST}}
                 </section>
             </main>
         </div>
-        
+
         <footer>
             <p>Salesforce Technical Documentation</p>
         </footer>
     </div>
     <script src="../../js/app.js"></script>
-    <script src="../../js/pagination.js"></script>
 </body>
 </html>

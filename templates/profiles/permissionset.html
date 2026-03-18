@@ -29,30 +29,48 @@
             </nav>
             
             <main class="main-content">
-                <h2>Permission Set: {{PERMISSIONSET_NAME}}</h2>
-                
+
+                <div class="detail-header">
+                    <h2>{{PERMISSIONSET_NAME}}</h2>
+                    <p class="detail-api-name text-muted">Permission Set</p>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h3>{{CLASSES_COUNT}}</h3>
+                        <p>Apex Classes</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>{{OBJECTS_COUNT}}</h3>
+                        <p>Objects</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>{{CUSTOM_PERMISSIONS_COUNT}}</h3>
+                        <p>Custom Permissions</p>
+                    </div>
+                </div>
+
                 <section>
-                    <h3>Summary</h3>
                     <div class="info-box">
                         <p><strong>Description:</strong> {{PERMISSIONSET_DESCRIPTION}}</p>
                         <p><strong>Source:</strong> <code>{{PERMISSIONSET_FILE}}</code></p>
                     </div>
                 </section>
-                
-                <section>
-                    <h3>Apex Classes ({{CLASSES_COUNT}})</h3>
-                    {{CLASSES_LIST}}
-                </section>
-                
-                <section>
-                    <h3>Object Permissions ({{OBJECTS_COUNT}})</h3>
+
+                <details open>
+                    <summary><strong>Object Permissions ({{OBJECTS_COUNT}})</strong></summary>
                     {{OBJECTS_LIST}}
-                </section>
-                
-                <section>
-                    <h3>Custom Permissions ({{CUSTOM_PERMISSIONS_COUNT}})</h3>
+                </details>
+
+                <details>
+                    <summary><strong>Apex Classes ({{CLASSES_COUNT}})</strong></summary>
+                    {{CLASSES_LIST}}
+                </details>
+
+                <details>
+                    <summary><strong>Custom Permissions ({{CUSTOM_PERMISSIONS_COUNT}})</strong></summary>
                     {{CUSTOM_PERMISSIONS_LIST}}
-                </section>
+                </details>
             </main>
         </div>
         

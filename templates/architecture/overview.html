@@ -25,21 +25,6 @@
                         <li><a href="index.html" class="active">Overview</a></li>
                         <li><a href="repository-structure.html">Repository Structure</a></li>
                     </ul>
-                    <h3>Main Navigation</h3>
-                    <ul>
-                        <li><a href="../../index.html">🏠 Quickstart</a></li>
-                        <li><a href="../profiles/navigation-map.html">🗺️ Profile Navigation</a></li>
-                        <li><a href="../profiles/index.html">🔒 Security & Access</a></li>
-                        <li><a href="../objects/index.html">📊 Data Model</a></li>
-                        <li><a href="../ui/index.html">🎨 UI Layer</a></li>
-                        <li><a href="../apex/index.html">⚙️ Apex Layer</a></li>
-                        <li><a href="../automation/index.html">🔄 Automation</a></li>
-                        <li><a href="../integrations/index.html">🔌 Integrations</a></li>
-                        <li><a href="index.html" class="active">🏗️ Architecture</a></li>
-                        <li><a href="../deployment/index.html">🚀 Deployment</a></li>
-                        <li><a href="../maintenance/index.html">🛠️ Maintenance & Support</a></li>
-                        <li><a href="../cross-reference/index.html">🔗 Cross-Reference</a></li>
-                    </ul>
                 </div>
             </nav>
             
@@ -50,26 +35,44 @@
                     <h3>Architecture Overview</h3>
                     <p>The MedicalArea-Salesforce-APAC system follows a layered architecture pattern:</p>
                     
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <h3>{{LWC_COUNT}}</h3>
+                            <p>LWC Components</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3>{{APEX_COUNT}}</h3>
+                            <p>Apex Classes</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3>{{FLOWS_COUNT}}</h3>
+                            <p>Flows</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3>{{TRIGGERS_COUNT}}</h3>
+                            <p>Triggers</p>
+                        </div>
+                    </div>
+
                     <div class="architecture-layers">
                         <div class="layer">
                             <h4>Presentation Layer</h4>
                             <ul>
-                                <li><strong>Lightning Web Components:</strong> 1614 components</li>
+                                <li><strong>Lightning Web Components:</strong> {{LWC_COUNT}} components</li>
                                 <li><strong>Aura Components:</strong> Legacy UI components</li>
-                                <li><strong>FlexiPages:</strong> 118 pages</li>
+                                <li><strong>FlexiPages:</strong> Custom app pages</li>
                                 <li><strong>Visualforce Pages:</strong> Custom pages</li>
                             </ul>
                         </div>
-                        
+
                         <div class="layer">
                             <h4>Business Logic Layer</h4>
                             <ul>
-                                <li><strong>Apex Classes:</strong> 1977 classes</li>
-                                <li><strong>Apex Triggers:</strong> 58 triggers</li>
-                                <li><strong>Flows:</strong> 332 flows</li>
+                                <li><strong>Apex Classes:</strong> {{APEX_COUNT}} classes</li>
+                                <li><strong>Flows:</strong> {{FLOWS_COUNT}} flows</li>
                             </ul>
                         </div>
-                        
+
                         <div class="layer">
                             <h4>Data Layer</h4>
                             <ul>
@@ -78,7 +81,7 @@
                                 <li>Custom Metadata Types</li>
                             </ul>
                         </div>
-                        
+
                         <div class="layer">
                             <h4>Integration Layer</h4>
                             <ul>
@@ -96,14 +99,6 @@
                     <p><a href="functional-map.html" class="btn">Open Functional Map</a></p>
                 </section>
                 
-                <section>
-                    <h3>Component Distribution</h3>
-                    <div class="info-box">
-                        <p><strong>Total Components:</strong> 3981</p>
-                        <p><strong>Security Profiles:</strong> 47</p>
-                        <p><strong>Permission Sets:</strong> 124</p>
-                    </div>
-                </section>
             </main>
         </div>
         
