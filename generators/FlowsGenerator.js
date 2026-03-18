@@ -340,7 +340,9 @@ export class FlowsGenerator extends BaseGenerator {
 
         // Generate node definitions — always use quoted labels so parentheses,
         // dashes and other special chars inside the label text can't break Mermaid syntax.
+        // Skip reserved synthetic node names to prevent duplicate definitions.
         for (const [nodeName, nodeInfo] of Object.entries(nodes)) {
+            if (nodeName === 'Start' || nodeName === 'End') continue;
             const nodeLabel = nodeInfo.label;
             if (nodeInfo.type === 'decision') {
                 mermaid += `    ${nodeName}{"${nodeLabel}"}\n`;
@@ -381,8 +383,9 @@ export class FlowsGenerator extends BaseGenerator {
         mermaid += '    classDef action fill:#2C2C2C,stroke:#1a1a1a,stroke-width:2px,color:#fff\n';
         mermaid += '    classDef startEnd fill:#F5F5F5,stroke:#E0E0E0,stroke-width:2px\n';
         
-        // Apply styles
+        // Apply styles (skip reserved synthetic node names)
         for (const [nodeName, nodeInfo] of Object.entries(nodes)) {
+            if (nodeName === 'Start' || nodeName === 'End') continue;
             if (nodeInfo.type === 'decision') {
                 mermaid += `    class ${nodeName} decision\n`;
             } else {

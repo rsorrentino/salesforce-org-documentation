@@ -717,9 +717,7 @@ header h1 a:hover {
     display: none !important;
 }
 
-.main-content section:not(.collapsed) > *:not(h3) {
-    display: block;
-}
+/* Collapsed sections hide non-heading children; un-collapsing restores natural display */
 
 /* Keep h3 visible when collapsed */
 .main-content section.collapsed > h3 {
