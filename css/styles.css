@@ -1918,3 +1918,16 @@ details .table-container { margin: 0; border-top: 1px solid var(--border-color);
 details .table-container .data-table { border-radius: 0; }
 body[data-theme="dark"] details { background: var(--bg-card); border-color: var(--border-color); }
 body[data-theme="dark"] details summary:hover { background: var(--bg-hover); }
+
+/* Diff / What Changed page */
+.diff-block { border-left: 4px solid var(--primary-color); padding: 0.75rem 1rem; margin: 1rem 0; background: var(--bg-secondary); border-radius: 4px; }
+.diff-block-clean { border-left-color: var(--success-color); }
+.diff-added { list-style: none; padding: 0; margin: 0.25rem 0; }
+.diff-added li { color: #155724; background: #d4edda; padding: 2px 6px; margin: 2px 0; border-radius: 3px; font-family: monospace; font-size: 0.85rem; }
+.diff-removed { list-style: none; padding: 0; margin: 0.25rem 0; }
+.diff-removed li { color: #721c24; background: #f8d7da; padding: 2px 6px; margin: 2px 0; border-radius: 3px; font-family: monospace; font-size: 0.85rem; }
+.diff-clean { color: var(--text-secondary); }
+.diff-added-cell { color: #155724; font-weight: 700; }
+.diff-removed-cell { color: #721c24; font-weight: 700; }
+body[data-theme="dark"] .diff-added li { color: #d4edda; background: rgba(21,87,36,0.3); }
+body[data-theme="dark"] .diff-removed li { color: #f8d7da; background: rgba(114,28,36,0.3); }

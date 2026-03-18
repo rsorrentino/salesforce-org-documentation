@@ -235,17 +235,6 @@ export class DiffGenerator extends BaseGenerator {
 
             <section>
                 <h3>Detail</h3>
-                <style>
-                    .diff-block { border-left: 4px solid var(--primary-color, #E31E24); padding: 0.75rem 1rem; margin: 1rem 0; background: var(--surface-alt, #fafafa); border-radius: 4px; }
-                    .diff-block-clean { border-left-color: #28a745; }
-                    .diff-added  { list-style: none; padding: 0; margin: 0.25rem 0; }
-                    .diff-added  li { color: #155724; background: #d4edda; padding: 2px 6px; margin: 2px 0; border-radius: 3px; font-family: monospace; font-size: 0.85rem; }
-                    .diff-removed { list-style: none; padding: 0; margin: 0.25rem 0; }
-                    .diff-removed li { color: #721c24; background: #f8d7da; padding: 2px 6px; margin: 2px 0; border-radius: 3px; font-family: monospace; font-size: 0.85rem; }
-                    .diff-clean { color: #555; }
-                    .diff-added-cell { color: #155724; font-weight: 700; }
-                    .diff-removed-cell { color: #721c24; font-weight: 700; }
-                </style>
                 ${sections}
             </section>`;
         }

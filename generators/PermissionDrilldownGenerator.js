@@ -201,7 +201,7 @@ export class PermissionDrilldownGenerator extends BaseGenerator {
         const rows = objNames.map(objName => {
             const p = permsObj[objName];
             return `<tr>
-                <td><a href="../objects/object-${this._objLink(objName)}.html">${this.escapeHtml(objName)}</a></td>
+                <td>${this._objCell(objName)}</td>
                 <td>${yes(p.allowRead    ?? p.readable)}</td>
                 <td>${yes(p.allowCreate  ?? p.creatable)}</td>
                 <td>${yes(p.allowEdit    ?? p.editable)}</td>
@@ -286,7 +286,7 @@ export class PermissionDrilldownGenerator extends BaseGenerator {
 
             return `<div>
                 <p class="fls-object-name">
-                    <a href="../objects/object-${this._objLink(obj)}.html">${this.escapeHtml(obj)}</a>
+                    ${this._objCell(obj)}
                     <small>(${fields.length} field${fields.length !== 1 ? 's' : ''})</small>
                 </p>
                 <div class="table-container">
@@ -582,5 +582,14 @@ export class PermissionDrilldownGenerator extends BaseGenerator {
 
     _objLink(objName) {
         return String(objName).replace(/__c/g, '_c').replace(/[^a-zA-Z0-9_]/g, '_');
+    }
+
+    /** Returns an object name as a link if we have a generated page for it, otherwise plain text */
+    _objCell(objName) {
+        const knownObjects = this.data.objects || {};
+        if (knownObjects[objName]) {
+            return `<a href="../objects/object-${this._objLink(objName)}.html">${this.escapeHtml(objName)}</a>`;
+        }
+        return this.escapeHtml(objName);
     }
 }

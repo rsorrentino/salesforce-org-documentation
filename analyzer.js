@@ -74,6 +74,8 @@ class SalesforceDocGenerator {
                 objectToApex: {},
                 apexToObjects: {},
                 flowToApex: {},
+                flowToFlexiPages: {},
+                flexiPageToFlows: {},
                 flexiPageToLWC: {},
                 flexiPageToAura: {},
                 lwcToLWC: {},
@@ -861,13 +863,20 @@ class SalesforceDocGenerator {
                     auraComponents: [],
                 };
                 
-                // Extract component instances
-                const components = this.findElements(flexipage, 'componentInstance');
+                // Extract component instances — nested: flexiPageRegions > itemInstances > componentInstance
+                // findElements can't traverse intermediate arrays, so we step through manually
+                const regions = this.findElements(flexipage, 'flexiPageRegions');
+                const components = [];
+                for (const region of regions) {
+                    for (const item of this.findElements(region, 'itemInstances')) {
+                        components.push(...this.findElements(item, 'componentInstance'));
+                    }
+                }
                 for (const comp of components) {
                     const compName = this.getText(comp.componentName);
                     if (compName) {
                         flexipageData.components.push(compName);
-                        
+
                         // Identify LWC vs Aura
                         if (compName.includes(':')) {
                             const [namespace, name] = compName.split(':', 2);
@@ -883,6 +892,28 @@ class SalesforceDocGenerator {
                                     this.data.relationships.auraToFlexiPages[name] = [];
                                 }
                                 this.data.relationships.auraToFlexiPages[name].push(flexipageName);
+                            }
+                        }
+
+                        // Detect flow references (flowruntime:interview component with flowName property)
+                        if (compName === 'flowruntime:interview') {
+                            const props = this.findElements(comp, 'componentInstanceProperties');
+                            for (const prop of props) {
+                                if (this.getText(prop.name) === 'flowName') {
+                                    const flowApiName = this.getText(prop.value);
+                                    if (flowApiName) {
+                                        if (!this.data.relationships.flowToFlexiPages[flowApiName]) {
+                                            this.data.relationships.flowToFlexiPages[flowApiName] = [];
+                                        }
+                                        if (!this.data.relationships.flowToFlexiPages[flowApiName].includes(flexipageName)) {
+                                            this.data.relationships.flowToFlexiPages[flowApiName].push(flexipageName);
+                                        }
+                                        if (!this.data.relationships.flexiPageToFlows[flexipageName]) {
+                                            this.data.relationships.flexiPageToFlows[flexipageName] = [];
+                                        }
+                                        this.data.relationships.flexiPageToFlows[flexipageName].push(flowApiName);
+                                    }
+                                }
                             }
                         }
                     }

@@ -6,11 +6,11 @@ A static site generator that transforms Salesforce repository metadata into a co
 
 This tool analyzes Salesforce XML metadata and generates interconnected HTML documentation covering security, data models, automation, code, UI components, integrations, architecture, and deployment. The output is a fully static site requiring no backend to serve.
 
-**Key stats generated from the current repo:**
-- 47 Profiles
-- 2,000+ Apex Classes
-- 1,625 LWC/Aura Components
-- 337 Flows
+**Typical stats from a large org:**
+- 40–200 Profiles / Permission Sets
+- 1,000–2,000+ Apex Classes
+- 200–1,600+ LWC/Aura Components
+- 50–400 Flows
 
 ---
 
@@ -99,15 +99,15 @@ The portal produces documentation across these sections:
 
 | Section | Description |
 |---|---|
-| **Security & Access** | Profiles, permission sets, permission matrices |
+| **Security & Access** | Profiles, permission sets, permission matrices, per-profile drilldown |
 | **Data Model** | Custom objects, fields, relationships (UML diagrams) |
-| **Automation** | Flows with visual diagrams, triggers, validation rules |
-| **Apex Code** | Classes and triggers with cross-references |
-| **UI Layer** | LWC/Aura components, Flex pages, Lightning layouts |
+| **Automation** | Flows with Mermaid diagrams, "Where it is Used" cross-refs, triggers, validation rules |
+| **Apex Code** | Classes and triggers with cross-references to objects and flows |
+| **UI Layer** | LWC/Aura components, FlexiPages, and which flows each Lightning page embeds |
 | **Integrations** | Named credentials and external system connections |
 | **Architecture** | Functional dependency maps (UI → Flows → Apex → Objects) |
 | **Deployment** | Release notes and change tracking |
-| **Maintenance** | Documentation health, coverage gaps, orphaned artifacts |
+| **Maintenance** | What Changed diff report, documentation health, orphaned artifacts |
 | **Search** | Full-text search index across all metadata types |
 | **Sitemap** | `sitemap.xml` for SEO and navigation |
 
@@ -118,7 +118,7 @@ The portal produces documentation across these sections:
 ```
 documentation-portal/
 ├── generate.js          # Main entry point — orchestrates all generators
-├── analyzers.js         # Parses Salesforce XML metadata into relationship maps
+├── analyzer.js          # Parses Salesforce XML metadata into relationship maps
 ├── init.js              # Sets up directory structure (idempotent)
 ├── serve.js             # Local HTTP dev server (port 8000)
 ├── update.js            # Git pull + regenerate
@@ -166,7 +166,11 @@ Every section generator extends `BaseGenerator` and is independently invokable. 
 - **Dark mode** — Client-side toggle with CSS variable theming
 - **Security matrix** — Object-level access across all profiles in one view
 - **Functional dependency maps** — Traces a user action from UI component through Flow to Apex to Object
+- **Flow "Where it is Used"** — Shows objects accessed, Apex classes called, and Lightning Pages that embed each flow
+- **FlexiPage → Flow relationships** — Detects `flowruntime:interview` components in FlexiPage XML and maps them bidirectionally
 - **Profile navigation maps** — Use-case-driven browsing of permissions
+- **Safe object links** — Permission drilldown pages only link to objects that have generated pages (no 404s for standard objects)
+- **What Changed diff report** — Compares current metadata snapshot to previous build and highlights additions/removals
 - **Link validation** — Built-in checker reports broken internal and external links
 - **Accessibility** — Skip links, ARIA labels, semantic HTML
 - **SEO** — Canonical links, robots meta, generated sitemap
@@ -178,7 +182,6 @@ Every section generator extends `BaseGenerator` and is independently invokable. 
 | Package | Purpose |
 |---|---|
 | `fast-xml-parser` | Parse Salesforce XML metadata files |
-| `xml2js` | Supplementary XML parsing |
 | `mermaid` | Diagram generation (flows, architecture) |
 | `glob` *(dev)* | File pattern matching during generation |
 | `http-server` *(dev)* | Simple local HTTP server for previewing output |
@@ -193,6 +196,7 @@ Every section generator extends `BaseGenerator` and is independently invokable. 
 - Diagrams require `securityLevel: 'loose'` (already set in `js/app.js`). If your Content-Security-Policy blocks inline scripts, diagrams will silently fail.
 - Large diagrams (hundreds of nodes) can exceed Mermaid's default depth limit. The functional map caps nodes per type to stay within limits.
 - A fallback error message is displayed in place of each broken diagram — check the browser console for the Mermaid parse error.
+- **"Could not find a suitable point"** — This error occurs when a flow element is named `Start` or `End`, colliding with the synthetic terminal nodes. The generator skips definitions for these reserved names automatically.
 
 ### Missing or empty sections
 

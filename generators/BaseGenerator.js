@@ -828,21 +828,43 @@ export class BaseGenerator {
      */
     generateFlowWhereUsed(flowName) {
         const relationships = this.data.relationships || {};
-        const usedIn = [];
-        
-        // Apex classes used in this flow
-        if (relationships.flowToApex && relationships.flowToApex[flowName]) {
+        const flowData = (this.data.flows || {})[flowName] || {};
+        const sections = [];
+
+        // Objects this flow reads/writes
+        const objectSet = new Set();
+        for (const lookup of flowData.recordLookups || []) { if (lookup.object) objectSet.add(lookup.object); }
+        for (const update of flowData.recordUpdates || []) { if (update.object) objectSet.add(update.object); }
+        for (const create of flowData.recordCreates || []) { if (create.object) objectSet.add(create.object); }
+        if (objectSet.size > 0) {
+            const objLinks = [...objectSet].sort().map(obj => {
+                const safeName = obj.replace(/[^a-zA-Z0-9]/g, '_');
+                return `<a href="../objects/object-${safeName}.html">${this.escapeHtml(obj)}</a>`;
+            }).join(', ');
+            sections.push(`<p><strong>Objects Accessed:</strong> ${objLinks}</p>`);
+        }
+
+        // Apex classes called by this flow (Apex actions)
+        if (relationships.flowToApex && relationships.flowToApex[flowName] && relationships.flowToApex[flowName].length > 0) {
             const apexList = relationships.flowToApex[flowName].map(cls =>
                 `<a href="../apex/class-${cls.replace(/[^a-zA-Z0-9]/g, '_')}.html">${this.escapeHtml(cls)}</a>`
             ).join(', ');
-            usedIn.push(`<strong>Apex Classes:</strong> ${apexList}`);
+            sections.push(`<p><strong>Apex Classes Called:</strong> ${apexList}</p>`);
         }
-        
-        if (usedIn.length === 0) {
-            return '<p><em>This Flow does not use any Apex classes.</em></p>';
+
+        // FlexiPages that reference this flow
+        if (relationships.flowToFlexiPages && relationships.flowToFlexiPages[flowName] && relationships.flowToFlexiPages[flowName].length > 0) {
+            const pageList = relationships.flowToFlexiPages[flowName].map(pg =>
+                `<span class="badge badge-info">${this.escapeHtml(pg)}</span>`
+            ).join(' ');
+            sections.push(`<p><strong>Lightning Pages:</strong> ${pageList}</p>`);
         }
-        
-        return '<ul>' + usedIn.map(item => `<li>${item}</li>`).join('\n') + '</ul>';
+
+        if (sections.length === 0) {
+            sections.push('<p class="text-muted"><em>No direct dependency data available. Use the <a href="../architecture/functional-map.html">Functional Map</a> to trace entry points.</em></p>');
+        }
+
+        return sections.join('\n');
     }
     
     /**
