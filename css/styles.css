@@ -1182,10 +1182,20 @@ pre code {
         flex-direction: column;
     }
 
+    /* Sidebar collapsed by default on mobile — JS adds .sidebar-open */
     .sidebar {
         position: static;
         width: 100%;
         min-width: unset;
+        overflow: hidden;
+        max-height: 0;
+        transition: max-height 0.3s ease;
+        padding: 0;
+    }
+
+    .sidebar.sidebar-open {
+        max-height: 3000px;
+        padding: 0.5rem 0;
     }
 
     .main-nav ul {
@@ -1209,6 +1219,52 @@ pre code {
     .header-breadcrumb {
         width: 100%;
         order: 3;
+    }
+
+    /* Flow diagram on mobile: compact, clearly scrollable */
+    .uml-container {
+        padding: 0.75rem;
+        min-height: auto !important;
+        border-radius: 6px;
+    }
+
+    .uml-container::before {
+        content: '← scroll to explore diagram →';
+        display: block;
+        font-size: 0.75rem;
+        color: var(--text-tertiary);
+        text-align: center;
+        margin-bottom: 0.5rem;
+    }
+}
+
+/* Mobile sidebar toggle button */
+.sidebar-toggle-btn {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    .sidebar-toggle-btn {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        width: 100%;
+        padding: 0.75rem 1rem;
+        background: var(--bg-secondary);
+        border: none;
+        border-top: 1px solid var(--border-color);
+        border-bottom: 1px solid var(--border-color);
+        color: var(--text-secondary);
+        font-size: 0.875rem;
+        font-weight: 600;
+        cursor: pointer;
+        text-align: left;
+        letter-spacing: 0.02em;
+    }
+
+    .sidebar-toggle-btn:hover {
+        background: var(--bg-hover);
+        color: var(--text-primary);
     }
 }
 
@@ -1617,6 +1673,34 @@ pre code {
 
 .uml-container .mermaid {
     min-width: 100% !important;
+}
+
+/* Fix Mermaid flowchart process-node rectangles rendering as black boxes.
+   Decision diamonds (polygon) keep their primaryColor set by Mermaid. */
+.uml-container svg .node rect,
+.uml-container svg .node .label-container {
+    fill: #f8f9fa !important;
+    stroke: #e2e8f0 !important;
+}
+
+/* Ensure node text is readable (foreignObject HTML nodes) */
+.uml-container svg .node .label foreignObject > div,
+.uml-container svg .label foreignObject > div {
+    color: #1a1a1a !important;
+    font-size: 13px !important;
+    line-height: 1.4 !important;
+}
+
+/* Dark mode: flip node backgrounds */
+body[data-theme="dark"] .uml-container svg .node rect,
+body[data-theme="dark"] .uml-container svg .node .label-container {
+    fill: #1e2432 !important;
+    stroke: #30363d !important;
+}
+
+body[data-theme="dark"] .uml-container svg .node .label foreignObject > div,
+body[data-theme="dark"] .uml-container svg .label foreignObject > div {
+    color: #e5e7eb !important;
 }
 
 /* Object links */

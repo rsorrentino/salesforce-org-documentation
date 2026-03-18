@@ -19,6 +19,7 @@ document.addEventListener('DOMContentLoaded', function() {
     addSectionDownloadLink();
     attachProfileJsonDownload();
     initObjectsEnhancements();
+    initMobileSidebar();
 });
 
 function initSearch() {
@@ -126,6 +127,34 @@ function sortTable(table, columnIndex) {
     rows.forEach(row => tbody.removeChild(row));
     rows.forEach(row => tbody.appendChild(row));
 }
+function initMobileSidebar() {
+    const sidebar = document.querySelector('.sidebar');
+    if (!sidebar) return;
+
+    const btn = document.createElement('button');
+    btn.className = 'sidebar-toggle-btn';
+    btn.setAttribute('aria-expanded', 'false');
+    btn.setAttribute('aria-controls', 'sidebar-nav');
+    btn.innerHTML = '&#9776;&nbsp; Navigation';
+    sidebar.id = 'sidebar-nav';
+    sidebar.parentNode.insertBefore(btn, sidebar);
+
+    btn.addEventListener('click', () => {
+        const isOpen = sidebar.classList.toggle('sidebar-open');
+        btn.setAttribute('aria-expanded', String(isOpen));
+        btn.innerHTML = isOpen ? '&#10005;&nbsp; Close Navigation' : '&#9776;&nbsp; Navigation';
+    });
+
+    // Close sidebar when a link inside it is tapped on mobile
+    sidebar.addEventListener('click', (e) => {
+        if (e.target.tagName === 'A' && window.innerWidth <= 768) {
+            sidebar.classList.remove('sidebar-open');
+            btn.setAttribute('aria-expanded', 'false');
+            btn.innerHTML = '&#9776;&nbsp; Navigation';
+        }
+    });
+}
+
 function initNavigation() {
     const currentPath = window.location.pathname;
     const navLinks = document.querySelectorAll('.nav-section a, .main-nav a');
@@ -517,8 +546,13 @@ async function initMermaidDiagrams() {
                 primaryBorderColor: '#B8151A',
                 primaryTextColor: '#1a1a1a',
                 lineColor: '#cbd5e0',
-                secondaryColor: '#ffffff',
-                tertiaryColor: '#f8f9fa',
+                secondaryColor: '#f8f9fa',
+                tertiaryColor: '#f1f3f5',
+                nodeBorder: '#e2e8f0',
+                nodeTextColor: '#1a1a1a',
+                clusterBkg: '#f8f9fa',
+                clusterBorder: '#e2e8f0',
+                edgeLabelBackground: '#ffffff',
                 fontFamily: "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif"
             }
         });
@@ -889,15 +923,23 @@ function setMermaidTheme(theme) {
             primaryBorderColor: '#be123c',
             primaryTextColor: '#e5e7eb',
             lineColor: '#30363d',
-            secondaryColor: '#0d1117',
-            tertiaryColor: '#111827'
+            secondaryColor: '#1e2432',
+            tertiaryColor: '#111827',
+            nodeBorder: '#30363d',
+            nodeTextColor: '#e5e7eb',
+            clusterBkg: '#161b22',
+            edgeLabelBackground: '#0d1117'
         } : {
             primaryColor: '#E31E24',
             primaryBorderColor: '#B8151A',
             primaryTextColor: '#1a1a1a',
             lineColor: '#cbd5e0',
-            secondaryColor: '#ffffff',
-            tertiaryColor: '#f8f9fa'
+            secondaryColor: '#f8f9fa',
+            tertiaryColor: '#f1f3f5',
+            nodeBorder: '#e2e8f0',
+            nodeTextColor: '#1a1a1a',
+            clusterBkg: '#f8f9fa',
+            edgeLabelBackground: '#ffffff'
         }
     });
 
