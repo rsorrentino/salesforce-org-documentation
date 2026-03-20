@@ -111,20 +111,67 @@ export class BaseGenerator {
      */
     buildStandardHeader({ depthToRoot = 2, breadcrumbHtml = '', activeTop = 'guides' } = {}) {
         const rootPrefix = '../'.repeat(Math.max(0, depthToRoot));
+        const pagesPrefix = `${rootPrefix}pages/`;
         const guidesHref = `${rootPrefix}index.html`;
-        const apiHref = `${rootPrefix}pages/cross-reference/index.html`;
-        const deploymentHref = `${rootPrefix}pages/deployment/index.html`;
-        const activeClass = (key) => (key === activeTop ? ' class="active"' : '');
         const breadcrumb = breadcrumbHtml || '<nav class="breadcrumb"></nav>';
+
+        // Developer dropdown paths
+        const dataModelPath = `${pagesPrefix}objects/index.html`;
+        const apexPath = `${pagesPrefix}apex/index.html`;
+        const uiPath = `${pagesPrefix}ui/index.html`;
+        const flowsPath = `${pagesPrefix}automation/index.html`;
+        const integrationsPath = `${pagesPrefix}integrations/index.html`;
+        const customMetadataPath = `${pagesPrefix}custommetadata/index.html`;
+
+        // Security dropdown paths
+        const profilesPath = `${pagesPrefix}profiles/index.html`;
+        const permDrilldownPath = `${pagesPrefix}profiles/permission-drilldown.html`;
+        const permMatrixPath = `${pagesPrefix}profiles/permissions-matrix.html`;
+        const navMapPath = `${pagesPrefix}profiles/navigation-map.html`;
+
+        // Operations dropdown paths
+        const architecturePath = `${pagesPrefix}architecture/index.html`;
+        const deploymentPath = `${pagesPrefix}deployment/index.html`;
+        const dashboardPath = `${pagesPrefix}dashboard/index.html`;
+        const changesPath = `${pagesPrefix}maintenance/changes.html`;
+        const healthPath = `${pagesPrefix}maintenance/health.html`;
+
         return `
 <header>
     <div class="header-left">
         <h1 class="logo"><a href="${guidesHref}">Salesforce Technical Documentation</a></h1>
     </div>
-    <nav class="top-nav">
-        <a href="${guidesHref}"${activeClass('guides')}>Guides</a>
-        <a href="${apiHref}"${activeClass('api')}>API Reference</a>
-        <a href="${deploymentHref}"${activeClass('deployment')}>Deployment</a>
+    <nav class="top-nav" role="navigation" aria-label="Main navigation">
+        <div class="nav-dropdown">
+            <button class="nav-dropdown-btn" aria-haspopup="true">Developer <span class="nav-arrow">▾</span></button>
+            <div class="nav-dropdown-menu" role="menu">
+                <a href="${dataModelPath}" role="menuitem">Data Model</a>
+                <a href="${apexPath}" role="menuitem">Apex Classes</a>
+                <a href="${uiPath}" role="menuitem">UI Components (LWC / Aura / FlexiPages)</a>
+                <a href="${flowsPath}" role="menuitem">Flows &amp; Automation</a>
+                <a href="${integrationsPath}" role="menuitem">Integrations</a>
+                <a href="${customMetadataPath}" role="menuitem">Custom Metadata</a>
+            </div>
+        </div>
+        <div class="nav-dropdown">
+            <button class="nav-dropdown-btn" aria-haspopup="true">Security <span class="nav-arrow">▾</span></button>
+            <div class="nav-dropdown-menu" role="menu">
+                <a href="${profilesPath}" role="menuitem">Profiles &amp; Permission Sets</a>
+                <a href="${permDrilldownPath}" role="menuitem">Permission Drilldown</a>
+                <a href="${permMatrixPath}" role="menuitem">Security Matrix</a>
+                <a href="${navMapPath}" role="menuitem">Profile Navigation Map</a>
+            </div>
+        </div>
+        <div class="nav-dropdown">
+            <button class="nav-dropdown-btn" aria-haspopup="true">Operations <span class="nav-arrow">▾</span></button>
+            <div class="nav-dropdown-menu" role="menu">
+                <a href="${architecturePath}" role="menuitem">Architecture Overview</a>
+                <a href="${deploymentPath}" role="menuitem">Deployment &amp; Environments</a>
+                <a href="${dashboardPath}" role="menuitem">Dashboard</a>
+                <a href="${changesPath}" role="menuitem">What Changed</a>
+                <a href="${healthPath}" role="menuitem">Documentation Health</a>
+            </div>
+        </div>
     </nav>
     <div class="header-breadcrumb">
         ${breadcrumb}
@@ -145,7 +192,6 @@ export class BaseGenerator {
     <div class="search-container" role="search">
         <label for="globalSearch" class="visually-hidden">Search documentation</label>
         <input type="text" class="search-box-header" placeholder="Ctrl+K Search" id="globalSearch" autocomplete="off" aria-label="Search documentation">
-        <button class="ai-button" type="button" onclick="openAIChat()" aria-label="Ask AI">Ask AI</button>
     </div>
 </header>
         `.trim();
@@ -479,40 +525,63 @@ export class BaseGenerator {
         const rootPrefix = '../'.repeat(Math.max(0, depthToRoot));
         const pagesPrefix = `${rootPrefix}pages/`;
         const homePath = `${rootPrefix}index.html`;
-        
+
         // Determine active section
         const isActive = (section) => {
             if (currentPage === section) return ' class="active"';
             return '';
         };
-        
-        // UX-I: Sidebar with group labels
+        const isActiveSub = (page, sub) => {
+            if (currentPage === page && currentSubPage === sub) return ' class="active"';
+            return '';
+        };
+
+        // Unified sidebar structure
         let html = '<div class="nav-section">\n';
         html += '    <ul>\n';
+
+        // EXPLORE
+        html += '        <li class="nav-group-label">EXPLORE</li>\n';
         html += `        <li><a href="${homePath}"${currentPage === '' ? ' class="active"' : ''}>Home</a></li>\n`;
-        html += '        <li class="nav-group-label">SECURITY</li>\n';
-        html += `        <li><a href="${pagesPrefix}profiles/navigation-map.html"${currentPage === 'profiles' && currentSubPage === 'navigation-map' ? ' class="active"' : ''}>Profile Navigation</a></li>\n`;
-        html += `        <li><a href="${pagesPrefix}profiles/index.html"${currentPage === 'profiles' && currentSubPage !== 'navigation-map' && currentSubPage !== 'permission-drilldown' ? ' class="active"' : ''}>Security & Access</a></li>\n`;
-        html += `        <li><a href="${pagesPrefix}profiles/permission-drilldown.html"${currentPage === 'profiles' && currentSubPage === 'permission-drilldown' ? ' class="active"' : ''}>Permission Drilldown</a></li>\n`;
-        html += '        <li class="nav-group-label">DATA & CODE</li>\n';
-        html += `        <li><a href="${pagesPrefix}objects/index.html"${isActive('objects')}>Data Model</a></li>\n`;
-        html += `        <li><a href="${pagesPrefix}apex/index.html"${isActive('apex')}>Apex Layer</a></li>\n`;
-        html += `        <li><a href="${pagesPrefix}automation/index.html"${isActive('automation')}>Automation</a></li>\n`;
-        html += '        <li class="nav-group-label">FRONTEND</li>\n';
-        html += `        <li><a href="${pagesPrefix}ui/index.html"${isActive('ui')}>UI Layer</a></li>\n`;
-        html += `        <li><a href="${pagesPrefix}integrations/index.html"${isActive('integrations')}>Integrations</a></li>\n`;
-        html += '        <li class="nav-group-label">GOVERNANCE</li>\n';
-        html += `        <li><a href="${pagesPrefix}architecture/index.html"${isActive('architecture')}>Architecture</a></li>\n`;
-        html += `        <li><a href="${pagesPrefix}deployment/index.html"${isActive('deployment')}>Deployment</a></li>\n`;
-        html += `        <li><a href="${pagesPrefix}maintenance/index.html"${isActive('maintenance')}>Maintenance</a></li>\n`;
-        html += `        <li><a href="${pagesPrefix}maintenance/changes.html"${currentPage === 'maintenance' && currentSubPage === 'changes' ? ' class="active"' : ''}>What Changed</a></li>\n`;
-        html += '        <li class="nav-group-label">TOOLS</li>\n';
-        html += `        <li><a href="${pagesPrefix}cross-reference/index.html"${isActive('cross-reference')}>Cross-Reference</a></li>\n`;
         html += `        <li><a href="${pagesPrefix}dashboard/index.html"${isActive('dashboard')}>Dashboard</a></li>\n`;
+
+        // DATA MODEL
+        html += '        <li class="nav-group-label">DATA MODEL</li>\n';
+        html += `        <li><a href="${pagesPrefix}objects/index.html"${isActive('objects')}>Objects</a></li>\n`;
+
+        // CODE
+        html += '        <li class="nav-group-label">CODE</li>\n';
+        html += `        <li><a href="${pagesPrefix}apex/index.html"${isActive('apex')}>Apex Classes</a></li>\n`;
+        html += `        <li><a href="${pagesPrefix}automation/index.html"${isActive('automation')}>Flows</a></li>\n`;
+        html += `        <li><a href="${pagesPrefix}objects/index.html"${currentPage === 'objects' && currentSubPage === 'validation-rules' ? ' class="active"' : ''}>Validation Rules</a></li>\n`;
+
+        // UI COMPONENTS
+        html += '        <li class="nav-group-label">UI COMPONENTS</li>\n';
+        html += `        <li><a href="${pagesPrefix}ui/index.html"${currentPage === 'ui' && currentSubPage !== 'flexipages' ? ' class="active"' : ''}>LWC Components</a></li>\n`;
+        html += `        <li><a href="${pagesPrefix}ui/index.html"${currentPage === 'ui' && currentSubPage === 'flexipages' ? ' class="active"' : ''}>FlexiPages</a></li>\n`;
+
+        // SECURITY
+        html += '        <li class="nav-group-label">SECURITY</li>\n';
+        html += `        <li><a href="${pagesPrefix}profiles/index.html"${currentPage === 'profiles' && currentSubPage !== 'permission-sets' && currentSubPage !== 'permission-drilldown' && currentSubPage !== 'navigation-map' && currentSubPage !== 'permissions-matrix' ? ' class="active"' : ''}>Profiles</a></li>\n`;
+        html += `        <li><a href="${pagesPrefix}profiles/index.html"${currentPage === 'profiles' && currentSubPage === 'permission-sets' ? ' class="active"' : ''}>Permission Sets</a></li>\n`;
+        html += `        <li><a href="${pagesPrefix}profiles/permission-drilldown.html"${isActiveSub('profiles', 'permission-drilldown')}>Permission Drilldown</a></li>\n`;
+        html += `        <li><a href="${pagesPrefix}profiles/permissions-matrix.html"${isActiveSub('profiles', 'permissions-matrix')}>Security Matrix</a></li>\n`;
+
+        // ARCHITECTURE
+        html += '        <li class="nav-group-label">ARCHITECTURE</li>\n';
+        html += `        <li><a href="${pagesPrefix}architecture/index.html"${currentPage === 'architecture' && !currentSubPage ? ' class="active"' : ''}>System Overview</a></li>\n`;
+        html += `        <li><a href="${pagesPrefix}architecture/functional-map.html"${isActiveSub('architecture', 'functional-map')}>Functional Map</a></li>\n`;
+        html += `        <li><a href="${pagesPrefix}architecture/repository-structure.html"${isActiveSub('architecture', 'repository-structure')}>Repository Structure</a></li>\n`;
+
+        // MAINTENANCE
+        html += '        <li class="nav-group-label">MAINTENANCE</li>\n';
+        html += `        <li><a href="${pagesPrefix}maintenance/changes.html"${isActiveSub('maintenance', 'changes')}>What Changed</a></li>\n`;
+        html += `        <li><a href="${pagesPrefix}maintenance/health.html"${isActiveSub('maintenance', 'health')}>Documentation Health</a></li>\n`;
         html += `        <li><a href="${pagesPrefix}custommetadata/index.html"${isActive('custommetadata')}>Custom Metadata</a></li>\n`;
+
         html += '    </ul>\n';
         html += '</div>\n';
-        
+
         return html;
     }
     

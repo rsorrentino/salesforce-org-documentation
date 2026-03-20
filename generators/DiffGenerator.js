@@ -201,6 +201,8 @@ export class DiffGenerator extends BaseGenerator {
             const totalAdded   = Object.values(diff).reduce((s, d) => s + d.added.length,   0);
             const totalRemoved = Object.values(diff).reduce((s, d) => s + d.removed.length, 0);
 
+            const formatDelta = (n) => n === 0 ? '0' : (n > 0 ? `+${n}` : `${n}`);
+
             const summaryRows = Object.entries(diff).map(([type, d]) => {
                 return `<tr>
                     <td>${this._typeLabel(type)}</td>
@@ -217,8 +219,8 @@ export class DiffGenerator extends BaseGenerator {
 
             diffHtml = `
             <div class="stats-grid">
-                <div class="stat-card"><h3 style="color:#28a745">+${totalAdded}</h3><p>Added items</p></div>
-                <div class="stat-card"><h3 style="color:#dc3545">-${totalRemoved}</h3><p>Removed items</p></div>
+                <div class="stat-card"><h3 style="color:#28a745">${formatDelta(totalAdded)}</h3><p>Added items</p></div>
+                <div class="stat-card"><h3 style="color:#dc3545">${formatDelta(-totalRemoved)}</h3><p>Removed items</p></div>
             </div>
 
             <section>

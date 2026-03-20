@@ -279,6 +279,65 @@ header h1 a:hover {
     border-bottom-color: var(--accent-color);
 }
 
+/* Top nav dropdowns */
+.nav-dropdown {
+    position: relative;
+    display: inline-block;
+}
+.nav-dropdown-btn {
+    background: none;
+    border: none;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    font-weight: 500;
+    padding: 0.4rem 0.75rem;
+    cursor: pointer;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    transition: background 0.15s;
+}
+.nav-dropdown-btn:hover,
+.nav-dropdown-btn[aria-expanded="true"] {
+    background: var(--bg-hover);
+}
+.nav-arrow { font-size: 0.7em; }
+.nav-dropdown-menu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    min-width: 220px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: var(--shadow-md);
+    padding: 0.4rem 0;
+    z-index: 500;
+}
+.nav-dropdown-menu a {
+    display: block;
+    padding: 0.5rem 1rem;
+    color: var(--text-primary);
+    text-decoration: none;
+    font-size: 0.875rem;
+    transition: background 0.15s;
+}
+.nav-dropdown-menu a:hover {
+    background: var(--bg-hover);
+    color: var(--accent-color);
+}
+.nav-dropdown:hover .nav-dropdown-menu,
+.nav-dropdown-menu:hover {
+    display: block;
+}
+/* Dark mode */
+body[data-theme="dark"] .nav-dropdown-menu {
+    background: var(--bg-card);
+    border-color: var(--border-color);
+}
+
 .search-container {
     display: flex;
     align-items: center;
@@ -932,9 +991,20 @@ header h1 a:hover {
     box-shadow: var(--shadow-sm);
 }
 
+.data-table {
+    table-layout: auto;
+}
+
 .data-table thead {
     background: var(--bg-tertiary);
     color: var(--text-primary);
+}
+
+.data-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--bg-secondary);
 }
 
 .data-table th {
@@ -949,6 +1019,10 @@ header h1 a:hover {
     top: 0;
     z-index: 10;
     background: var(--bg-tertiary);
+}
+
+.data-table td {
+    word-break: break-word;
 }
 
 .data-table td {
@@ -1630,26 +1704,31 @@ pre code {
 /* Print Styles */
 @media print {
     .sidebar,
-    .main-nav,
-    footer,
+    .top-nav,
+    .search-container,
+    .ai-button,
+    .diagram-toolbar,
+    .back-to-top,
+    .sidebar-toggle-btn,
+    .ai-panel,
+    .theme-toggle,
     .pagination,
-    .profile-map-controls {
-        display: none;
-    }
-    
-    .main-content {
-        width: 100%;
-    }
-    
-    .uml-container,
-    .profile-map-container,
-    .profile-map-interactive {
-        page-break-inside: avoid;
-    }
-    
-    .profile-map-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
+    .table-controls { display: none !important; }
+
+    .content-wrapper { display: block !important; }
+    .main-content { margin: 0 !important; width: 100% !important; max-width: 100% !important; }
+    .collapsible-content { display: block !important; max-height: none !important; }
+
+    table { page-break-inside: auto; }
+    tr { page-break-inside: avoid; page-break-after: auto; }
+    thead { display: table-header-group; }
+
+    .stat-card { border: 1px solid #ccc !important; }
+    .mermaid svg { max-width: 100% !important; height: auto !important; }
+
+    a[href]::after { content: " (" attr(href) ")"; font-size: 0.75em; color: #666; }
+    a[href^="#"]::after,
+    a[href^="javascript"]::after { content: ""; }
 }
 
 /* Enhanced info-box styles for better readability */
@@ -2108,12 +2187,10 @@ body[data-theme="dark"] .theme-icon-light { display: none; }
 .table-pager{display:flex;gap:.75rem;align-items:center;justify-content:flex-end;margin:.4rem 0}
 .pager-info{font-size:.85rem;color:var(--text-tertiary)}
 
-/* Print styles */
+/* Print styles (merged into main @media print block above) */
+/* Additional print overrides */
 @media print {
-  header, .sidebar, .top-nav, .search-container, .table-toolbar, .table-controls, .table-pager, .back-to-top { display: none !important; }
   body { background: #fff !important; color: #000 !important; }
-  a[href]::after { content: ' (' attr(href) ')'; font-size: .85em; color: #444; }
-  .main-content { width: 100% !important; }
   .page-break { page-break-after: always; }
 }
 /* Dark theme readability tuning */

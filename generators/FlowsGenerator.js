@@ -339,7 +339,7 @@ export class FlowsGenerator extends BaseGenerator {
         mermaid += '    End([End])\n';
 
         // FIX 2D: truncate long labels so Mermaid doesn't overflow
-        const MAX_LABEL = 32;
+        const MAX_LABEL = 50;
         const truncateLabel = (label) =>
             label.length > MAX_LABEL ? label.substring(0, MAX_LABEL - 1) + '…' : label;
 

@@ -4,6 +4,7 @@
 document.addEventListener('DOMContentLoaded', function() {
     initSearch();
     initGlobalSearch();
+    initNavDropdowns();
     initTableSorting();
     initNavigation();
     initPagination();
@@ -27,6 +28,31 @@ document.addEventListener('DOMContentLoaded', function() {
 function initBreadcrumbTooltip() {
     const breadcrumb = document.querySelector('.breadcrumb');
     if (breadcrumb) breadcrumb.setAttribute('title', breadcrumb.textContent.trim());
+}
+
+function initNavDropdowns() {
+    document.querySelectorAll('.nav-dropdown-btn').forEach(btn => {
+        const menu = btn.nextElementSibling;
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isOpen = btn.getAttribute('aria-expanded') === 'true';
+            // Close all others
+            document.querySelectorAll('.nav-dropdown-btn').forEach(b => {
+                b.setAttribute('aria-expanded', 'false');
+                b.nextElementSibling.style.display = '';
+            });
+            if (!isOpen) {
+                btn.setAttribute('aria-expanded', 'true');
+                menu.style.display = 'block';
+            }
+        });
+    });
+    document.addEventListener('click', () => {
+        document.querySelectorAll('.nav-dropdown-btn').forEach(b => {
+            b.setAttribute('aria-expanded', 'false');
+            b.nextElementSibling.style.display = '';
+        });
+    });
 }
 
 function initSearch() {
@@ -225,17 +251,17 @@ function initGlobalSearch() {
         }
     });
 
-    let searchTimeout;
+    let searchDebounceTimer = null;
     globalSearchInput.addEventListener('input', function(e) {
-        clearTimeout(searchTimeout);
+        clearTimeout(searchDebounceTimer);
         const searchTerm = e.target.value.trim();
         if (!searchTerm) {
             hideSearchResults();
             return;
         }
-        searchTimeout = setTimeout(() => {
-            performGlobalSearch(searchTerm);
-        }, 250);
+        searchDebounceTimer = setTimeout(() => {
+            performGlobalSearch(e.target.value);
+        }, 300);
     });
 
     globalSearchInput.addEventListener('keydown', function(e) {
@@ -441,7 +467,7 @@ function displaySearchResults(results, searchTerm) {
                 </a>
             `).join('')}
         </div>
-        ${results.length > 20 ? `<div class="search-results-footer">Showing first 20 of ${results.length} results</div>` : ''}
+        ${results.length > 20 ? `<div class="search-results-footer">Showing first 20 of ${results.length} results &mdash; <a href="#" class="search-see-all" onclick="event.preventDefault()">See all results</a></div>` : ''}
     `;
 
     const host = document.querySelector('.search-container') || document.querySelector('header');
@@ -606,6 +632,21 @@ async function initMermaidDiagrams() {
         } else if (typeof window.mermaid.init === 'function') {
             window.mermaid.init(undefined, mermaidBlocks);
         }
+
+        // Fix erDiagram viewBox — Mermaid v11 sometimes renders with a tiny 16x16 viewBox
+        document.querySelectorAll('.mermaid svg').forEach(svg => {
+            try {
+                const bbox = svg.getBBox();
+                if (bbox && (bbox.width > 20 || bbox.height > 20)) {
+                    const padding = 24;
+                    svg.setAttribute('viewBox',
+                        `${bbox.x - padding} ${bbox.y - padding} ${bbox.width + padding * 2} ${bbox.height + padding * 2}`
+                    );
+                    svg.setAttribute('width', '100%');
+                    svg.removeAttribute('height');
+                }
+            } catch (e) { /* getBBox may throw in hidden elements */ }
+        });
 
         mermaidBlocks.forEach(block => {
             const container = block.closest('.uml-container') || block.parentElement;
