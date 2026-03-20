@@ -313,9 +313,8 @@ export class PermissionDrilldownGenerator extends BaseGenerator {
         const rows = list.map(ca => {
             const cls = ca.name || ca.apexClass || ca;
             const enabled = ca.enabled === true || ca.enabled === 'true';
-            const safeCls = String(cls).replace(/[^a-zA-Z0-9]/g, '_');
             return `<tr>
-                <td><a href="../apex/class-${safeCls}.html">${this.escapeHtml(String(cls))}</a></td>
+                <td>${this._apexCell(cls)}</td>
                 <td>${enabled ? '<span class="badge badge-success">Enabled</span>' : '<span class="badge badge-secondary">Disabled</span>'}</td>
             </tr>`;
         }).join('');
@@ -591,5 +590,15 @@ export class PermissionDrilldownGenerator extends BaseGenerator {
             return `<a href="../objects/object-${this._objLink(objName)}.html">${this.escapeHtml(objName)}</a>`;
         }
         return this.escapeHtml(objName);
+    }
+
+    /** Returns an Apex class name as a link only if a generated page exists, otherwise plain text */
+    _apexCell(className) {
+        const knownClasses = this.data.apexClasses || {};
+        if (knownClasses[className]) {
+            const safe = String(className).replace(/[^a-zA-Z0-9]/g, '_');
+            return `<a href="../apex/class-${safe}.html">${this.escapeHtml(String(className))}</a>`;
+        }
+        return this.escapeHtml(String(className));
     }
 }

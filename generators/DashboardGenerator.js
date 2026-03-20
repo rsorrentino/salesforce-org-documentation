@@ -227,28 +227,6 @@ export class DashboardGenerator extends BaseGenerator {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - Salesforce Technical Documentation</title>
     <link rel="stylesheet" href="../../css/styles.css">
-    <style>
-        .dashboard-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 1rem;
-            margin: 1.5rem 0;
-        }
-        .dashboard-card {
-            display: flex;
-            align-items: flex-start;
-            gap: 0.75rem;
-            padding: 1rem 1.2rem;
-        }
-        .dashboard-card-icon { font-size: 1.8rem; line-height: 1; }
-        .dashboard-card-count { font-size: 2rem; font-weight: 700; color: var(--primary-color, #E31E24); }
-        .dashboard-card-label { font-size: 0.85rem; color: var(--text-secondary, #555); margin-top: 0.1rem; }
-        .dashboard-card-trend { margin-top: 0.4rem; }
-        .sparkline-grid { display: flex; flex-wrap: wrap; gap: 1.5rem; margin: 1rem 0 2rem; }
-        .sparkline-card { display: flex; flex-direction: column; align-items: flex-start; gap: 0.3rem; }
-        .sparkline-label { font-size: 0.8rem; text-transform: capitalize; color: var(--text-secondary, #666); }
-        .badge-danger { background: #dc3545; color: #fff; }
-    </style>
 </head>
 <body>
 <div class="container">
