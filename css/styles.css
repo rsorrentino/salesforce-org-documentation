@@ -1194,7 +1194,7 @@ pre code {
     }
 
     .sidebar.sidebar-open {
-        max-height: 3000px;
+        max-height: none;
         padding: 0.5rem 0;
     }
 
@@ -1221,20 +1221,29 @@ pre code {
         order: 3;
     }
 
-    /* Flow diagram on mobile: compact, clearly scrollable */
+    /* Flow diagram on mobile: remove forced min-height, keep scrollable */
     .uml-container {
-        padding: 0.75rem;
-        min-height: auto !important;
+        min-height: unset;
         border-radius: 6px;
+        margin: 1rem 0;
     }
 
-    .uml-container::before {
-        content: '← scroll to explore diagram →';
-        display: block;
-        font-size: 0.75rem;
-        color: var(--text-tertiary);
-        text-align: center;
-        margin-bottom: 0.5rem;
+    .uml-container .mermaid {
+        padding: 0.75rem;
+    }
+
+    /* Stats grid: 2 columns on mobile (was 1) */
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 0.75rem;
+    }
+
+    .stat-card {
+        padding: 0.875rem !important;
+    }
+
+    .stat-card h3 {
+        font-size: 1.5rem !important;
     }
 }
 
@@ -1660,38 +1669,148 @@ pre code {
     font-size: 1rem !important;
 }
 
-/* Mermaid diagram container */
+/* =====================================================================
+   MERMAID DIAGRAM — v11 compatible
+   In Mermaid v11, flowchart rectangle nodes changed from <rect> to
+   <path class="basic label-container">. Both selectors are kept for
+   backward compatibility.
+   ===================================================================== */
+
+/* Diagram wrapper: scrollable, touch-friendly, no fixed height */
 .uml-container {
-    background: var(--bg-card) !important;
-    border: 1px solid var(--border-color) !important;
-    padding: 2rem !important;
-    border-radius: 8px !important;
-    margin: 2rem 0 !important;
-    min-height: 400px !important;
-    overflow-x: auto !important;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    margin: 1.5rem 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    position: relative;
 }
 
 .uml-container .mermaid {
-    min-width: 100% !important;
+    min-width: max-content;
+    padding: 1.5rem;
 }
 
-/* Fix Mermaid flowchart process-node rectangles rendering as black boxes.
-   Decision diamonds (polygon) keep their primaryColor set by Mermaid. */
+/* Fullscreen toggle button */
+.diagram-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--bg-secondary);
+    border-radius: 8px 8px 0 0;
+}
+
+.diagram-toolbar button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.35rem 0.75rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+}
+
+.diagram-toolbar button:hover {
+    background: var(--primary-color);
+    color: #fff;
+    border-color: var(--primary-color);
+}
+
+/* Fullscreen overlay */
+.diagram-fullscreen-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: var(--bg-primary);
+    flex-direction: column;
+}
+
+.diagram-fullscreen-overlay.active {
+    display: flex;
+}
+
+.diagram-fullscreen-overlay .diagram-toolbar {
+    border-radius: 0;
+    flex-shrink: 0;
+    padding: 0.75rem 1rem;
+}
+
+.diagram-fullscreen-body {
+    flex: 1;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 1.5rem;
+}
+
+/* ── Light mode: Mermaid v11 node shapes ── */
+/* v11 rectangles → <path class="basic label-container"> */
+.uml-container svg .node path.basic,
+.uml-container svg .node path.label-container,
+/* v10 rectangles → <rect> */
 .uml-container svg .node rect,
 .uml-container svg .node .label-container {
-    fill: #f8f9fa !important;
-    stroke: #e2e8f0 !important;
+    fill: var(--bg-secondary) !important;
+    stroke: var(--border-color) !important;
 }
 
-/* Ensure node text is readable (foreignObject HTML nodes) */
+/* Stadium / rounded nodes */
+.uml-container svg .node .basic.label-container {
+    fill: var(--bg-secondary) !important;
+}
+
+/* Edge arrowheads — keep them neutral */
+.uml-container svg .arrowheadPath {
+    fill: var(--text-tertiary) !important;
+    stroke: none !important;
+}
+
+/* Node text — foreignObject (HTML label) */
 .uml-container svg .node .label foreignObject > div,
-.uml-container svg .label foreignObject > div {
-    color: #1a1a1a !important;
+.uml-container svg .label foreignObject > div,
+.uml-container svg .node .nodeLabel,
+.uml-container svg .nodeLabel {
+    color: var(--text-primary) !important;
     font-size: 13px !important;
     line-height: 1.4 !important;
 }
 
-/* Dark mode: flip node backgrounds */
+/* Node text — tspan (SVG text) */
+.uml-container svg .node text tspan,
+.uml-container svg text.nodeLabel tspan {
+    fill: var(--text-primary) !important;
+}
+
+/* Edge labels */
+.uml-container svg .edgeLabel .label {
+    color: var(--text-secondary) !important;
+    background: var(--bg-card) !important;
+}
+
+.uml-container svg .edgeLabel foreignObject > div {
+    color: var(--text-secondary) !important;
+    background: var(--bg-card);
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-size: 11px !important;
+}
+
+/* ── Dark mode overrides ── */
+body[data-theme="dark"] .uml-container svg .node path.basic,
+body[data-theme="dark"] .uml-container svg .node path.label-container,
 body[data-theme="dark"] .uml-container svg .node rect,
 body[data-theme="dark"] .uml-container svg .node .label-container {
     fill: #1e2432 !important;
@@ -1699,9 +1818,23 @@ body[data-theme="dark"] .uml-container svg .node .label-container {
 }
 
 body[data-theme="dark"] .uml-container svg .node .label foreignObject > div,
-body[data-theme="dark"] .uml-container svg .label foreignObject > div {
+body[data-theme="dark"] .uml-container svg .label foreignObject > div,
+body[data-theme="dark"] .uml-container svg .node .nodeLabel,
+body[data-theme="dark"] .uml-container svg .nodeLabel {
     color: #e5e7eb !important;
 }
+
+body[data-theme="dark"] .uml-container svg .node text tspan,
+body[data-theme="dark"] .uml-container svg text.nodeLabel tspan {
+    fill: #e5e7eb !important;
+}
+
+body[data-theme="dark"] .uml-container svg .edgeLabel foreignObject > div {
+    color: #9ca3af !important;
+    background: #1e2432;
+}
+
+/* Decision diamonds keep the primary (red) color — no override */
 
 /* Object links */
 .object-link {

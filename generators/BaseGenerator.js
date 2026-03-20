@@ -595,12 +595,12 @@ export class BaseGenerator {
         const uses = [];
         
         // Apex classes used by this LWC
-        const lwcData = this.data.lwcComponents[lwcName];
+        const lwcData = (this.data.lwcComponents || {})[lwcName];
         if (lwcData && lwcData.apexMethods) {
             const apexClasses = new Set();
             for (const method of lwcData.apexMethods) {
                 const className = method.split('.')[0];
-                if (this.data.apexClasses[className]) {
+                if ((this.data.apexClasses || {})[className]) {
                     apexClasses.add(className);
                 }
             }
@@ -655,7 +655,7 @@ export class BaseGenerator {
         }
         
         // Relationships to other objects
-        const objData = this.data.objects[objName];
+        const objData = (this.data.objects || {})[objName];
         if (objData && objData.relationships && objData.relationships.length > 0) {
             const relList = objData.relationships.map(rel => {
                 const safeName = rel.relatedObject.replace(/__c/g, '_c').replace(/[^a-zA-Z0-9_]/g, '_');
@@ -736,7 +736,7 @@ export class BaseGenerator {
                 const apexClasses = new Set();
                 for (const method of lwcData.apexMethods) {
                     const className = method.split('.')[0];
-                    if (this.data.apexClasses[className]) {
+                    if ((this.data.apexClasses || {})[className]) {
                         apexClasses.add(className);
                     }
                 }

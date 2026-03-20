@@ -566,8 +566,8 @@ async function initMermaidDiagrams() {
         mermaidBlocks.forEach(block => {
             const container = block.closest('.uml-container') || block.parentElement;
             if (container) {
-                container.style.overflowX = 'auto';
                 container.style.maxWidth = '100%';
+                addDiagramToolbar(container);
             }
         });
     } catch (e) {
@@ -577,6 +577,66 @@ async function initMermaidDiagrams() {
             block.innerHTML = `<div class="info-box"><p><strong>Diagram Error:</strong> ${escapeHtml(msg)}</p><p>Use the lists below to navigate instead.</p></div>`;
         });
     }
+}
+
+function addDiagramToolbar(container) {
+    // Don't add toolbar twice
+    if (container.querySelector('.diagram-toolbar')) return;
+
+    const toolbar = document.createElement('div');
+    toolbar.className = 'diagram-toolbar';
+
+    // Fullscreen button
+    const fsBtn = document.createElement('button');
+    fsBtn.type = 'button';
+    fsBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg> Full Screen';
+    fsBtn.setAttribute('aria-label', 'View diagram full screen');
+    fsBtn.addEventListener('click', () => openDiagramFullscreen(container));
+    toolbar.appendChild(fsBtn);
+
+    // Insert toolbar before the mermaid div
+    container.insertBefore(toolbar, container.firstChild);
+}
+
+function openDiagramFullscreen(container) {
+    // Remove existing overlay if any
+    document.querySelector('.diagram-fullscreen-overlay')?.remove();
+
+    const overlay = document.createElement('div');
+    overlay.className = 'diagram-fullscreen-overlay active';
+
+    // Toolbar inside overlay
+    const toolbar = document.createElement('div');
+    toolbar.className = 'diagram-toolbar';
+    const closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Close';
+    closeBtn.addEventListener('click', () => overlay.remove());
+    toolbar.appendChild(closeBtn);
+    overlay.appendChild(toolbar);
+
+    // Clone the mermaid SVG into the overlay
+    const body = document.createElement('div');
+    body.className = 'diagram-fullscreen-body';
+    const mermaidEl = container.querySelector('.mermaid');
+    if (mermaidEl) {
+        const clone = mermaidEl.cloneNode(true);
+        // Make SVG fill the space
+        const svg = clone.querySelector('svg');
+        if (svg) {
+            svg.style.maxWidth = '100%';
+            svg.style.height = 'auto';
+        }
+        body.appendChild(clone);
+    }
+    overlay.appendChild(body);
+
+    // Close on Escape
+    document.addEventListener('keydown', function escHandler(e) {
+        if (e.key === 'Escape') { overlay.remove(); document.removeEventListener('keydown', escHandler); }
+    });
+
+    document.body.appendChild(overlay);
 }
 
 function initPagination() {

@@ -161,9 +161,9 @@ Every section generator extends `BaseGenerator` and is independently invokable. 
 
 ## Features
 
-- **Mermaid diagrams** — Flow charts, architecture views, and UML data models rendered client-side
+- **Mermaid diagrams (v11)** — Flow charts, architecture views, and UML data models rendered client-side with a **Full Screen** button for mobile/tablet use
 - **Full-text search** — Per-type JSON search indices with a global search bar (Ctrl+K)
-- **Dark mode** — Client-side toggle with CSS variable theming
+- **Dark mode** — Client-side toggle with CSS variable theming (Mermaid node colors update automatically)
 - **Security matrix** — Object-level access across all profiles in one view
 - **Functional dependency maps** — Traces a user action from UI component through Flow to Apex to Object
 - **Flow "Where it is Used"** — Shows objects accessed, Apex classes called, and Lightning Pages that embed each flow
@@ -192,11 +192,13 @@ Every section generator extends `BaseGenerator` and is independently invokable. 
 
 ### Mermaid diagrams not rendering
 
-- The bundled `js/vendor/mermaid.min.js` is loaded offline — no CDN required. Verify the file exists after `npm install`.
+- The bundled `js/vendor/mermaid.min.js` (v11) is loaded offline — no CDN required. Verify the file exists after `npm install`.
 - Diagrams require `securityLevel: 'loose'` (already set in `js/app.js`). If your Content-Security-Policy blocks inline scripts, diagrams will silently fail.
 - Large diagrams (hundreds of nodes) can exceed Mermaid's default depth limit. The functional map caps nodes per type to stay within limits.
 - A fallback error message is displayed in place of each broken diagram — check the browser console for the Mermaid parse error.
 - **"Could not find a suitable point"** — This error occurs when a flow element is named `Start` or `End`, colliding with the synthetic terminal nodes. The generator skips definitions for these reserved names automatically.
+- **Black node boxes on mobile/tablet** — Fixed in CSS (Mermaid v11 changed rectangle nodes from `<rect>` to `<path class="basic">`). Both selectors are now targeted.
+- **Diagram unreadable on small screen** — Use the **Full Screen** button above each diagram to open it in a fullscreen overlay with pan/scroll support.
 
 ### Missing or empty sections
 
