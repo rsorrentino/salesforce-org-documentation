@@ -138,6 +138,9 @@ async function run() {
             // Skip external / special
             if (SKIP_HREF_PREFIXES.some(p => href.startsWith(p))) continue;
 
+            // Skip client-side query-string URLs (e.g. ?page=2#table) — JS handles these at runtime
+            if (href.includes('?')) continue;
+
             // Split fragment
             const [filePart, fragment] = href.split('#');
 
