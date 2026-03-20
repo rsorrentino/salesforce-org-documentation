@@ -312,6 +312,22 @@ export class BaseGenerator {
      * @param {string} text - Text to escape
      * @returns {string} Escaped text
      */
+    /**
+     * Returns true if this object has a generated page.
+     * Used to avoid linking to standard/managed-package objects that were not analyzed.
+     */
+    _objExists(objName) {
+        return !!(this.data.objects || {})[objName];
+    }
+
+    /**
+     * Build a safe filename fragment for an object name.
+     * e.g. "My_Object__c" → "My_Object_c"
+     */
+    _objSafe(objName) {
+        return String(objName).replace(/__c/g, '_c').replace(/[^a-zA-Z0-9_]/g, '_');
+    }
+
     escapeHtml(text) {
         if (!text) return '';
         return String(text)
@@ -658,8 +674,11 @@ export class BaseGenerator {
         const objData = (this.data.objects || {})[objName];
         if (objData && objData.relationships && objData.relationships.length > 0) {
             const relList = objData.relationships.map(rel => {
-                const safeName = rel.relatedObject.replace(/__c/g, '_c').replace(/[^a-zA-Z0-9_]/g, '_');
-                return `<a href="object-${safeName}.html" title="View Object">${this.escapeHtml(rel.relatedObject)}</a>`;
+                const rObj = rel.relatedObject;
+                if (this._objExists(rObj)) {
+                    return `<a href="object-${this._objSafe(rObj)}.html" title="View Object">${this.escapeHtml(rObj)}</a>`;
+                }
+                return this.escapeHtml(rObj);
             }).join(', ');
             usedIn.push(`<strong>Related Objects:</strong> ${relList}`);
         }
@@ -722,10 +741,13 @@ export class BaseGenerator {
         
         if (itemType === 'apex') {
             // Apex class uses: objects (SOQL), other classes
-            const objList = relationships.apexToObjects && relationships.apexToObjects[itemName] 
+            const objList = relationships.apexToObjects && relationships.apexToObjects[itemName]
                 ? relationships.apexToObjects[itemName].map(obj => {
-                    const safeName = obj.replace(/__c/g, '_c').replace(/[^a-zA-Z0-9_]/g, '_');
-                    return `<li><a href="../objects/object-${safeName}.html">${this.escapeHtml(obj)}</a> <span class="relationship-type">(Object)</span></li>`;
+                    const label = `${this.escapeHtml(obj)} <span class="relationship-type">(Object)</span>`;
+                    if (this._objExists(obj)) {
+                        return `<li><a href="../objects/object-${this._objSafe(obj)}.html">${label}</a></li>`;
+                    }
+                    return `<li>${label}</li>`;
                 }).join('\n')
                 : '';
             if (objList) html += objList;
@@ -838,8 +860,10 @@ export class BaseGenerator {
         for (const create of flowData.recordCreates || []) { if (create.object) objectSet.add(create.object); }
         if (objectSet.size > 0) {
             const objLinks = [...objectSet].sort().map(obj => {
-                const safeName = obj.replace(/[^a-zA-Z0-9]/g, '_');
-                return `<a href="../objects/object-${safeName}.html">${this.escapeHtml(obj)}</a>`;
+                if (this._objExists(obj)) {
+                    return `<a href="../objects/object-${this._objSafe(obj)}.html">${this.escapeHtml(obj)}</a>`;
+                }
+                return this.escapeHtml(obj);
             }).join(', ');
             sections.push(`<p><strong>Objects Accessed:</strong> ${objLinks}</p>`);
         }

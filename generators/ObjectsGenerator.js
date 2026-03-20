@@ -223,9 +223,13 @@ export class ObjectsGenerator extends BaseGenerator {
         let html = '<section><h3>Relationships</h3><div class="table-container"><table class="data-table"><thead><tr><th>Field</th><th>Related Object</th><th>Type</th><th>Cardinality</th></tr></thead><tbody>';
 
         for (const rel of relationships) {
+            const rObj = rel.relatedObject || '';
+            const relCell = rObj && this._objExists(rObj)
+                ? `<a href="object-${this._objSafe(rObj)}.html">${this.escapeHtml(rObj)}</a>`
+                : this.escapeHtml(rObj);
             html += `<tr>
                 <td><strong>${this.escapeHtml(rel.field || '')}</strong></td>
-                <td>${this.escapeHtml(rel.relatedObject || '')}</td>
+                <td>${relCell}</td>
                 <td>${this.escapeHtml(rel.type || '')}</td>
                 <td>${rel.type === 'MasterDetail' ? '1:N' : 'N:1'}</td>
             </tr>`;
@@ -666,8 +670,10 @@ export class ObjectsGenerator extends BaseGenerator {
             const arrow = r.type === 'MasterDetail' ? '==>' : '-->';
             edges.push(`    ${objNode} ${arrow}|${this.escapeHtml(r.type || 'Lookup')}| ${rNode}`);
             styles.push(`    style ${rNode} fill:#20c997,color:#fff,stroke:#199d76`);
-            const safeR = rObj.replace(/__c/g, '_c').replace(/[^a-zA-Z0-9_]/g, '_');
-            clicks.push(`    click ${rNode} "object-${safeR}.html" "View Object"`);
+            // Only add click link if the related object has a generated page
+            if (this._objExists(rObj)) {
+                clicks.push(`    click ${rNode} "object-${this._objSafe(rObj)}.html" "View Object"`);
+            }
         }
 
         // Nothing to show?
