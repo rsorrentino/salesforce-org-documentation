@@ -161,9 +161,10 @@ Every section generator extends `BaseGenerator` and is independently invokable. 
 
 ## Features
 
-- **Mermaid diagrams (v11)** — Flow charts, architecture views, and UML data models rendered client-side with a **Full Screen** button for mobile/tablet use
-- **Full-text search** — Per-type JSON search indices with a global search bar (Ctrl+K)
+- **Mermaid diagrams (v11)** — Flow charts, architecture views, and UML data models rendered client-side with a **Full Screen** button for mobile/tablet use; loading placeholder shown while rendering
+- **Full-text search** — Per-type JSON search indices with a global search bar (Ctrl+K); ESC clears the field and closes results
 - **Dark mode** — Client-side toggle with CSS variable theming (Mermaid node colors update automatically)
+- **Ask AI panel** — Slide-in drawer with suggestion chips and textarea (backend integration ready)
 - **Security matrix** — Object-level access across all profiles in one view
 - **Functional dependency maps** — Traces a user action from UI component through Flow to Apex to Object
 - **Flow "Where it is Used"** — Shows objects accessed, Apex classes called, and Lightning Pages that embed each flow
@@ -171,9 +172,11 @@ Every section generator extends `BaseGenerator` and is independently invokable. 
 - **Profile navigation maps** — Use-case-driven browsing of permissions
 - **Safe object links** — Permission drilldown pages only link to objects that have generated pages (no 404s for standard objects)
 - **What Changed diff report** — Compares current metadata snapshot to previous build and highlights additions/removals
-- **Link validation** — Built-in checker reports broken internal and external links
-- **Accessibility** — Skip links, ARIA labels, semantic HTML
+- **Link validation** — Built-in checker reports broken internal and external links (0 broken links across 3,800+ pages)
+- **Mobile-responsive navigation** — Hamburger sidebar with overlay tap-to-close on small screens
+- **Accessibility** — Skip links, ARIA labels, semantic HTML, keyboard-navigable sidebar
 - **SEO** — Canonical links, robots meta, generated sitemap
+- **404 page** — Custom error page with navigation links
 
 ---
 
@@ -195,6 +198,7 @@ Every section generator extends `BaseGenerator` and is independently invokable. 
 - The bundled `js/vendor/mermaid.min.js` (v11) is loaded offline — no CDN required. Verify the file exists after `npm install`.
 - Diagrams require `securityLevel: 'loose'` (already set in `js/app.js`). If your Content-Security-Policy blocks inline scripts, diagrams will silently fail.
 - Large diagrams (hundreds of nodes) can exceed Mermaid's default depth limit. The functional map caps nodes per type to stay within limits.
+- A "Rendering diagram…" loading placeholder is shown while Mermaid processes — this disappears once rendering completes (or is replaced by an error message).
 - A fallback error message is displayed in place of each broken diagram — check the browser console for the Mermaid parse error.
 - **"Could not find a suitable point"** — This error occurs when a flow element is named `Start` or `End`, colliding with the synthetic terminal nodes. The generator skips definitions for these reserved names automatically.
 - **Black node boxes on mobile/tablet** — Fixed in CSS (Mermaid v11 changed rectangle nodes from `<rect>` to `<path class="basic">`). Both selectors are now targeted.
