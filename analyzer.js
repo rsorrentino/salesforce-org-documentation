@@ -92,7 +92,8 @@ class SalesforceDocGenerator {
             ignoreAttributes: false,
             attributeNamePrefix: '@_',
             textNodeName: '#text',
-            parseAttributeValue: true,
+            parseAttributeValue: false,  // FIX 1A: keep attribute values as strings
+            parseNodeValue: false,        // FIX 1A: keep node values as strings (prevent true→boolean)
             trimValues: true
         });
     }
@@ -331,10 +332,15 @@ class SalesforceDocGenerator {
      * Helper to get text from XML element
      */
     getText(element, defaultValue = '') {
-        if (!element && element !== 0) return defaultValue; // Allow 0 as valid value
+        if (element === null || element === undefined) return defaultValue;
+        if (element === 0) return '0';
+        if (typeof element === 'boolean') return element ? 'true' : 'false'; // FIX 1B: handle booleans
+        if (typeof element === 'number') return String(element);
         if (typeof element === 'string') return element;
-        if (typeof element === 'number') return String(element); // Handle numbers
-        if (element['#text']) return element['#text'];
+        if (element['#text'] !== undefined && element['#text'] !== null) {
+            const t = element['#text'];
+            return typeof t === 'boolean' ? (t ? 'true' : 'false') : String(t); // FIX 1B
+        }
         if (Array.isArray(element) && element.length > 0) {
             return this.getText(element[0], defaultValue);
         }

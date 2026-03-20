@@ -166,10 +166,7 @@ export class ObjectsGenerator extends BaseGenerator {
             <p>Salesforce Technical Documentation</p>
         </footer>
     </div>
-    <script src="../../js/vendor/mermaid.min.js"></script>
-    <script>mermaid.initialize({startOnLoad:true,theme:'default',themeVariables:{primaryColor:'#E31E24',primaryTextColor:'#fff',primaryBorderColor:'#B8151A',lineColor:'#2C2C2C',secondaryColor:'#2C2C2C',tertiaryColor:'#F5F5F5'}});</script>
     <script src="../../js/app.js"></script>
-    <script src="../../js/pagination.js"></script>
 </body>
 </html>`;
     }
@@ -750,8 +747,6 @@ ${diagram}
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Data Model - Salesforce Technical Documentation</title>
     <link rel="stylesheet" href="../../css/styles.css">
-    <script src="../../js/vendor/mermaid.min.js"></script>
-    <script>mermaid.initialize({startOnLoad:true, theme:'default', themeVariables:{primaryColor:'#E31E24', primaryTextColor:'#fff', primaryBorderColor:'#B8151A', lineColor:'#2C2C2C', secondaryColor:'#2C2C2C', tertiaryColor:'#F5F5F5'}});</script>
 </head>
 <body>
     <div class="container">

@@ -572,23 +572,32 @@ async function initMermaidDiagrams() {
     if (!window.mermaid) return;
 
     try {
+        // FIX 2B: readable themeVariables — default node is light blue, not red
         window.mermaid.initialize({
             startOnLoad: false,
             securityLevel: 'loose',
             theme: 'base',
             themeVariables: {
-                primaryColor: '#E31E24',
-                primaryBorderColor: '#B8151A',
-                primaryTextColor: '#1a1a1a',
-                lineColor: '#cbd5e0',
-                secondaryColor: '#f8f9fa',
-                tertiaryColor: '#f1f3f5',
-                nodeBorder: '#e2e8f0',
-                nodeTextColor: '#1a1a1a',
-                clusterBkg: '#f8f9fa',
-                clusterBorder: '#e2e8f0',
-                edgeLabelBackground: '#ffffff',
-                fontFamily: "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif"
+                primaryColor: '#F0F4FF',           // default node: light blue background
+                primaryBorderColor: '#4A6FA5',     // blue border
+                primaryTextColor: '#1A3A6B',       // dark blue readable text
+                lineColor: '#718096',              // medium grey arrows
+                secondaryColor: '#F8F9FA',         // secondary bg: off-white
+                tertiaryColor: '#EDF2F7',          // tertiary bg
+                nodeBorder: '#CBD5E0',             // default node border
+                nodeTextColor: '#1a1a1a',          // node text
+                clusterBkg: '#F8F9FA',
+                clusterBorder: '#E2E8F0',
+                edgeLabelBackground: '#FFFFFF',
+                fontFamily: "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif",
+                fontSize: '14px'
+            },
+            flowchart: {
+                htmlLabels: true,
+                curve: 'basis',
+                padding: 20,
+                nodeSpacing: 50,
+                rankSpacing: 60
             }
         });
 
@@ -1020,27 +1029,29 @@ function setMermaidTheme(theme) {
         securityLevel: 'loose',
         theme: 'base',
         themeVariables: dark ? {
-            primaryColor: '#f87171',
-            primaryBorderColor: '#be123c',
+            primaryColor: '#1e2432',
+            primaryBorderColor: '#4A6FA5',
             primaryTextColor: '#e5e7eb',
-            lineColor: '#30363d',
-            secondaryColor: '#1e2432',
-            tertiaryColor: '#111827',
+            lineColor: '#4a5568',
+            secondaryColor: '#111827',
+            tertiaryColor: '#0d1117',
             nodeBorder: '#30363d',
             nodeTextColor: '#e5e7eb',
             clusterBkg: '#161b22',
-            edgeLabelBackground: '#0d1117'
+            edgeLabelBackground: '#0d1117',
+            fontSize: '14px'
         } : {
-            primaryColor: '#E31E24',
-            primaryBorderColor: '#B8151A',
-            primaryTextColor: '#1a1a1a',
-            lineColor: '#cbd5e0',
-            secondaryColor: '#f8f9fa',
-            tertiaryColor: '#f1f3f5',
-            nodeBorder: '#e2e8f0',
+            primaryColor: '#F0F4FF',
+            primaryBorderColor: '#4A6FA5',
+            primaryTextColor: '#1A3A6B',
+            lineColor: '#718096',
+            secondaryColor: '#F8F9FA',
+            tertiaryColor: '#EDF2F7',
+            nodeBorder: '#CBD5E0',
             nodeTextColor: '#1a1a1a',
-            clusterBkg: '#f8f9fa',
-            edgeLabelBackground: '#ffffff'
+            clusterBkg: '#F8F9FA',
+            edgeLabelBackground: '#FFFFFF',
+            fontSize: '14px'
         }
     });
 

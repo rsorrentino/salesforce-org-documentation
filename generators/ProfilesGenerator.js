@@ -509,23 +509,26 @@ export class ProfilesGenerator extends BaseGenerator {
             let pRead = 0, pCreate = 0, pEdit = 0, pDelete = 0, pFull = 0;
             let psRead = 0, psCreate = 0, psEdit = 0, psDelete = 0;
 
+            // FIX 1C: use explicit boolean conversion
+            const _tb = (v) => v === true || v === 'true' || v === '1';
+
             for (const profile of profileList) {
                 const perm = profile.objectPermissions?.[objName];
                 if (!perm) continue;
-                if (perm.allowRead || perm.read) pRead++;
-                if (perm.allowCreate || perm.create) pCreate++;
-                if (perm.allowEdit || perm.edit) pEdit++;
-                if (perm.allowDelete || perm.delete) pDelete++;
-                if (perm.viewAllRecords || perm.modifyAllRecords) pFull++;
+                if (_tb(perm.allowRead)   || _tb(perm.read))   pRead++;
+                if (_tb(perm.allowCreate) || _tb(perm.create)) pCreate++;
+                if (_tb(perm.allowEdit)   || _tb(perm.edit))   pEdit++;
+                if (_tb(perm.allowDelete) || _tb(perm.delete)) pDelete++;
+                if (_tb(perm.viewAllRecords) || _tb(perm.modifyAllRecords)) pFull++;
             }
 
             for (const ps of permissionSetList) {
                 const perm = ps.objectPermissions?.[objName];
                 if (!perm) continue;
-                if (perm.allowRead || perm.read) psRead++;
-                if (perm.allowCreate || perm.create) psCreate++;
-                if (perm.allowEdit || perm.edit) psEdit++;
-                if (perm.allowDelete || perm.delete) psDelete++;
+                if (_tb(perm.allowRead)   || _tb(perm.read))   psRead++;
+                if (_tb(perm.allowCreate) || _tb(perm.create)) psCreate++;
+                if (_tb(perm.allowEdit)   || _tb(perm.edit))   psEdit++;
+                if (_tb(perm.allowDelete) || _tb(perm.delete)) psDelete++;
             }
 
             rows += `<tr>
@@ -554,12 +557,13 @@ export class ProfilesGenerator extends BaseGenerator {
             const profile = profiles[profileName];
             const perms = Object.values(profile.objectPermissions || {});
             let read = 0, create = 0, edit = 0, del = 0, full = 0;
+            const _tb2 = (v) => v === true || v === 'true' || v === '1';
             for (const perm of perms) {
-                if (perm.allowRead || perm.read) read++;
-                if (perm.allowCreate || perm.create) create++;
-                if (perm.allowEdit || perm.edit) edit++;
-                if (perm.allowDelete || perm.delete) del++;
-                if (perm.viewAllRecords || perm.modifyAllRecords) full++;
+                if (_tb2(perm.allowRead)   || _tb2(perm.read))   read++;
+                if (_tb2(perm.allowCreate) || _tb2(perm.create)) create++;
+                if (_tb2(perm.allowEdit)   || _tb2(perm.edit))   edit++;
+                if (_tb2(perm.allowDelete) || _tb2(perm.delete)) del++;
+                if (_tb2(perm.viewAllRecords) || _tb2(perm.modifyAllRecords)) full++;
             }
             const safeName = profileName.replace(/[^a-zA-Z0-9]/g, '_');
             rows += `<tr>
@@ -583,11 +587,12 @@ export class ProfilesGenerator extends BaseGenerator {
             const ps = permissionSets[psName];
             const perms = Object.values(ps.objectPermissions || {});
             let read = 0, create = 0, edit = 0, del = 0;
+            const _tb3 = (v) => v === true || v === 'true' || v === '1';
             for (const perm of perms) {
-                if (perm.allowRead || perm.read) read++;
-                if (perm.allowCreate || perm.create) create++;
-                if (perm.allowEdit || perm.edit) edit++;
-                if (perm.allowDelete || perm.delete) del++;
+                if (_tb3(perm.allowRead)   || _tb3(perm.read))   read++;
+                if (_tb3(perm.allowCreate) || _tb3(perm.create)) create++;
+                if (_tb3(perm.allowEdit)   || _tb3(perm.edit))   edit++;
+                if (_tb3(perm.allowDelete) || _tb3(perm.delete)) del++;
             }
             const safeName = psName.replace(/[^a-zA-Z0-9]/g, '_');
             rows += `<tr>
@@ -783,19 +788,23 @@ export class ProfilesGenerator extends BaseGenerator {
         html += '                </thead>\n';
         html += '                <tbody>\n';
         
+        // FIX 1C: explicit boolean conversion for Yes/No display
+        const toBool = (v) => v === true || v === 'true' || v === '1';
+        const yesNo  = (v) => toBool(v) ? 'Yes' : 'No';
+
         for (const objName of objects.slice(0, 100)) {
             const perm = objectPermissions[objName] || {};
-            const read = perm.read || perm.allowRead || 'No';
-            const create = perm.create || perm.allowCreate || 'No';
-            const edit = perm.edit || perm.allowEdit || 'No';
-            const del = perm.delete || perm.allowDelete || 'No';
-            
+            const read   = yesNo(perm.allowRead   ?? perm.read);
+            const create = yesNo(perm.allowCreate ?? perm.create);
+            const edit   = yesNo(perm.allowEdit   ?? perm.edit);
+            const del    = yesNo(perm.allowDelete ?? perm.delete);
+
             html += `                    <tr>
                         <td><strong>${this.escapeHtml(objName)}</strong></td>
-                        <td>${this.escapeHtml(String(read))}</td>
-                        <td>${this.escapeHtml(String(create))}</td>
-                        <td>${this.escapeHtml(String(edit))}</td>
-                        <td>${this.escapeHtml(String(del))}</td>
+                        <td>${read}</td>
+                        <td>${create}</td>
+                        <td>${edit}</td>
+                        <td>${del}</td>
                     </tr>\n`;
         }
         

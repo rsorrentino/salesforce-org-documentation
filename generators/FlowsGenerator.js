@@ -338,12 +338,17 @@ export class FlowsGenerator extends BaseGenerator {
         // Add end node definition first so edges can reference it
         mermaid += '    End([End])\n';
 
+        // FIX 2D: truncate long labels so Mermaid doesn't overflow
+        const MAX_LABEL = 32;
+        const truncateLabel = (label) =>
+            label.length > MAX_LABEL ? label.substring(0, MAX_LABEL - 1) + '…' : label;
+
         // Generate node definitions — always use quoted labels so parentheses,
         // dashes and other special chars inside the label text can't break Mermaid syntax.
         // Skip reserved synthetic node names to prevent duplicate definitions.
         for (const [nodeName, nodeInfo] of Object.entries(nodes)) {
             if (nodeName === 'Start' || nodeName === 'End') continue;
-            const nodeLabel = nodeInfo.label;
+            const nodeLabel = truncateLabel(nodeInfo.label);
             if (nodeInfo.type === 'decision') {
                 mermaid += `    ${nodeName}{"${nodeLabel}"}\n`;
             } else {
@@ -378,10 +383,10 @@ export class FlowsGenerator extends BaseGenerator {
             mermaid += '    Start --> End\n';
         }
         
-        // Style nodes
-        mermaid += '    classDef decision fill:#E31E24,stroke:#B8151A,stroke-width:2px,color:#fff\n';
-        mermaid += '    classDef action fill:#2C2C2C,stroke:#1a1a1a,stroke-width:2px,color:#fff\n';
-        mermaid += '    classDef startEnd fill:#F5F5F5,stroke:#E0E0E0,stroke-width:2px\n';
+        // FIX 2A: readable classDef colors with good contrast
+        mermaid += '    classDef decision fill:#FFF3F3,stroke:#E31E24,stroke-width:2px,color:#9B0000\n';
+        mermaid += '    classDef action fill:#F0F4FF,stroke:#4A6FA5,stroke-width:1.5px,color:#1A3A6B\n';
+        mermaid += '    classDef startEnd fill:#F0FFF4,stroke:#38A169,stroke-width:1.5px,color:#1A5C38\n';
         
         // Apply styles (skip reserved synthetic node names)
         for (const [nodeName, nodeInfo] of Object.entries(nodes)) {
