@@ -20,7 +20,14 @@ document.addEventListener('DOMContentLoaded', function() {
     attachProfileJsonDownload();
     initObjectsEnhancements();
     initMobileSidebar();
+    initBreadcrumbTooltip();
 });
+
+// BUG-13: Add title tooltip to breadcrumb for truncated text
+function initBreadcrumbTooltip() {
+    const breadcrumb = document.querySelector('.breadcrumb');
+    if (breadcrumb) breadcrumb.setAttribute('title', breadcrumb.textContent.trim());
+}
 
 function initSearch() {
     const searchInputs = document.querySelectorAll('.search-box');
@@ -141,6 +148,7 @@ function initMobileSidebar() {
 
     btn.addEventListener('click', () => {
         const isOpen = sidebar.classList.toggle('sidebar-open');
+        document.body.classList.toggle('sidebar-overlay-active', isOpen); // BUG-04
         btn.setAttribute('aria-expanded', String(isOpen));
         btn.innerHTML = isOpen ? '&#10005;&nbsp; Close Navigation' : '&#9776;&nbsp; Navigation';
     });
@@ -149,8 +157,22 @@ function initMobileSidebar() {
     sidebar.addEventListener('click', (e) => {
         if (e.target.tagName === 'A' && window.innerWidth <= 768) {
             sidebar.classList.remove('sidebar-open');
+            document.body.classList.remove('sidebar-overlay-active');
             btn.setAttribute('aria-expanded', 'false');
             btn.innerHTML = '&#9776;&nbsp; Navigation';
+        }
+    });
+
+    // Close sidebar when overlay is clicked (BUG-04)
+    document.body.addEventListener('click', (e) => {
+        if (document.body.classList.contains('sidebar-overlay-active')) {
+            const clickedInsideSidebar = sidebar.contains(e.target) || btn.contains(e.target);
+            if (!clickedInsideSidebar) {
+                sidebar.classList.remove('sidebar-open');
+                document.body.classList.remove('sidebar-overlay-active');
+                btn.setAttribute('aria-expanded', 'false');
+                btn.innerHTML = '&#9776;&nbsp; Navigation';
+            }
         }
     });
 }
@@ -221,6 +243,7 @@ function initGlobalSearch() {
             e.preventDefault();
             performGlobalSearch(e.target.value.trim());
         } else if (e.key === 'Escape') {
+            e.target.value = '';      // BUG-07: clear the field on Escape
             hideSearchResults();
             e.target.blur();
         }
@@ -522,6 +545,18 @@ async function initMermaidDiagrams() {
     const mermaidBlocks = document.querySelectorAll('.mermaid');
     if (!mermaidBlocks.length) return;
 
+    // UX-G: Show loading placeholder while Mermaid renders
+    mermaidBlocks.forEach(block => {
+        const container = block.closest('.uml-container') || block.parentElement;
+        if (container && !container.querySelector('.diagram-loading')) {
+            const loader = document.createElement('div');
+            loader.className = 'diagram-loading';
+            loader.textContent = 'Rendering diagram…';
+            container.insertBefore(loader, block);
+            block.style.visibility = 'hidden';
+        }
+    });
+
     if (!window.mermaid) {
         const rootPrefix = getRootPrefix();
         await new Promise(resolve => {
@@ -567,12 +602,18 @@ async function initMermaidDiagrams() {
             const container = block.closest('.uml-container') || block.parentElement;
             if (container) {
                 container.style.maxWidth = '100%';
+                // UX-G: Remove loading placeholder, restore diagram visibility
+                container.querySelector('.diagram-loading')?.remove();
+                block.style.visibility = '';
                 addDiagramToolbar(container);
             }
         });
     } catch (e) {
         console.warn('Mermaid render error:', e);
         mermaidBlocks.forEach(block => {
+            const container = block.closest('.uml-container') || block.parentElement;
+            container?.querySelector('.diagram-loading')?.remove();
+            block.style.visibility = '';
             const msg = e && e.message ? e.message : 'Unable to render diagram';
             block.innerHTML = `<div class="info-box"><p><strong>Diagram Error:</strong> ${escapeHtml(msg)}</p><p>Use the lists below to navigate instead.</p></div>`;
         });
@@ -1015,14 +1056,15 @@ function setMermaidTheme(theme) {
 function initBackToTop() {
     const button = document.createElement('button');
     button.className = 'back-to-top';
-    button.textContent = 'Top';
+    button.textContent = '↑ Top';
     button.title = 'Back to top';
     button.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
     document.body.appendChild(button);
 
+    // BUG-D: show only after scrolling 300px, using CSS class for pointer-events
     window.addEventListener('scroll', () => {
-        button.style.opacity = window.scrollY > 600 ? '1' : '0';
-    });
+        button.classList.toggle('visible', window.scrollY > 300);
+    }, { passive: true });
 }
 
 function addSectionDownloadLink() {
@@ -1037,7 +1079,8 @@ function addSectionDownloadLink() {
     else if (path.includes('/pages/objects/')) key = 'object';
     else if (path.includes('/pages/flows/')) key = 'flow';
     else if (path.includes('/pages/ui/')) key = 'lwccomponent';
-    else if (path.includes('/pages/profiles/')) key = 'profile';
+    // BUG-02: Profile pages use attachProfileJsonDownload() for per-profile JSON — skip generic link
+    // else if (path.includes('/pages/profiles/')) key = 'profile';
 
     if (!key) return;
     const anchor = document.createElement('a');
@@ -1246,9 +1289,10 @@ function applyAlphaFilter(letter, table, toolbar) {
         row.style.display = match ? '' : 'none';
     });
 
+    // BUG-12: Remove all active states, then set only the clicked button
     toolbar.querySelectorAll('.chip').forEach(chip => chip.classList.remove('active'));
-    const index = letter === 'All' ? 1 : letter === '#' ? 2 : 2 + (letter.charCodeAt(0) - 65);
-    toolbar.querySelector(`.chip:nth-child(${index})`)?.classList.add('active');
+    const activeChip = Array.from(toolbar.querySelectorAll('.chip')).find(c => c.textContent === letter);
+    if (activeChip) activeChip.classList.add('active');
 
     const info = document.getElementById('objectsPaginationInfo');
     if (info) {
@@ -1290,8 +1334,88 @@ function enableColumnResize() {
     });
 }
 
-if (typeof window.openAIChat !== 'function') {
+// BUG-03: Ask AI drawer panel
+(function initAIPanel() {
+    const SUGGESTIONS = [
+        'What profiles have access to Account?',
+        'List all Apex classes related to Opportunity',
+        'Which flows modify Contact records?',
+        'What LWC components use the wire service?',
+        'Show me objects with more than 50 custom fields',
+    ];
+
+    function buildPanel() {
+        const panel = document.createElement('aside');
+        panel.className = 'ai-panel';
+        panel.setAttribute('role', 'dialog');
+        panel.setAttribute('aria-modal', 'true');
+        panel.setAttribute('aria-label', 'Ask AI');
+        panel.innerHTML = `
+            <div class="ai-panel-header">
+                <span class="ai-panel-title">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/>
+                    </svg>
+                    Ask AI
+                </span>
+                <button class="ai-panel-close" aria-label="Close AI panel">&#10005;</button>
+            </div>
+            <div class="ai-panel-body">
+                <div class="ai-panel-chips">
+                    ${SUGGESTIONS.map(s => `<button class="ai-chip">${s}</button>`).join('')}
+                </div>
+                <textarea class="ai-panel-textarea" placeholder="Ask anything about this Salesforce org…" rows="4"></textarea>
+            </div>
+            <div class="ai-panel-footer">
+                <button class="ai-panel-ask-btn" disabled title="Coming soon — backend not yet connected">
+                    Ask
+                </button>
+                <div class="ai-coming-soon">AI integration coming soon</div>
+            </div>
+        `;
+        document.body.appendChild(panel);
+
+        // Close button
+        panel.querySelector('.ai-panel-close').addEventListener('click', closeAIPanel);
+
+        // Suggestion chips
+        panel.querySelectorAll('.ai-chip').forEach(chip => {
+            chip.addEventListener('click', () => {
+                panel.querySelector('.ai-panel-textarea').value = chip.textContent;
+                panel.querySelector('.ai-panel-textarea').focus();
+            });
+        });
+
+        // Close on Escape or overlay click
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && panel.classList.contains('open')) closeAIPanel();
+        });
+        document.addEventListener('click', (e) => {
+            if (panel.classList.contains('open') && !panel.contains(e.target)) {
+                // Check if clicked the Ask AI button (don't close)
+                if (!e.target.closest('[onclick*="openAIChat"], .ask-ai-btn')) closeAIPanel();
+            }
+        });
+
+        return panel;
+    }
+
+    let _panel = null;
+    function getPanel() {
+        if (!_panel) _panel = buildPanel();
+        return _panel;
+    }
+
+    function closeAIPanel() {
+        const panel = getPanel();
+        panel.classList.remove('open');
+        document.body.classList.remove('ai-panel-overlay-active');
+    }
+
     window.openAIChat = function() {
-        alert('AI integration coming soon! This will allow you to ask questions about the documentation.');
+        const panel = getPanel();
+        panel.classList.add('open');
+        document.body.classList.add('ai-panel-overlay-active');
+        setTimeout(() => panel.querySelector('.ai-panel-textarea').focus(), 300);
     };
-}
+})();

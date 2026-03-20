@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="canonical" href="/404.html">
+    <meta name="robots" content="index,follow">
+    
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <title>Page Not Found - Salesforce Technical Documentation</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .error-page {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 60vh;
+            text-align: center;
+            padding: 2rem;
+            gap: 1.5rem;
+        }
+        .error-code {
+            font-size: 6rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            line-height: 1;
+            opacity: 0.8;
+        }
+        .error-title {
+            font-size: 1.75rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 0;
+        }
+        .error-message {
+            color: var(--text-secondary);
+            max-width: 420px;
+            line-height: 1.6;
+        }
+        .error-actions {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-top: 0.5rem;
+        }
+        .error-actions .btn {
+            padding: 0.6rem 1.4rem;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.95rem;
+        }
+        .btn-primary {
+            background: var(--primary-color);
+            color: #fff;
+        }
+        .btn-secondary {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+    </style>
+</head>
+<body>
+    <a class="skip-link" href="#main">Skip to main content</a>
+    <div class="container">
+        <header>
+            <div class="header-left">
+                <h1 class="logo"><a href="index.html">Salesforce Technical Documentation</a></h1>
+            </div>
+            <nav class="top-nav">
+                <a href="index.html">Guides</a>
+                <a href="pages/cross-reference/index.html">API Reference</a>
+                <a href="pages/deployment/index.html">Deployment</a>
+            </nav>
+            <div class="header-breadcrumb">
+                <nav class="breadcrumb">
+                    <a href="index.html">Home</a> / 404
+                </nav>
+            </div>
+            <button class="theme-toggle" type="button" title="Toggle dark mode" aria-label="Toggle dark mode">
+                <span class="theme-icon theme-icon-light" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" width="16" height="16">
+                        <circle cx="12" cy="12" r="4" fill="currentColor"></circle>
+                        <path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"></path>
+                    </svg>
+                </span>
+                <span class="theme-icon theme-icon-dark" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" width="16" height="16">
+                        <path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z" fill="currentColor"></path>
+                    </svg>
+                </span>
+            </button>
+        </header>
+
+        <main id="main" class="main-content" style="max-width: 100%;">
+            <div class="error-page">
+                <div class="error-code">404</div>
+                <h2 class="error-title">Page Not Found</h2>
+                <p class="error-message">
+                    The page you're looking for doesn't exist or may have been moved.
+                    Try searching the documentation or return to the homepage.
+                </p>
+                <div class="error-actions">
+                    <a href="index.html" class="btn btn-primary">Back to Home</a>
+                    <a href="pages/objects/index.html" class="btn btn-secondary">Browse Objects</a>
+                    <a href="pages/apex/index.html" class="btn btn-secondary">Browse Apex</a>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script src="js/app.js"></script>
+</body>
+</html>

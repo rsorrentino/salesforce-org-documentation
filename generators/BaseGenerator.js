@@ -486,25 +486,30 @@ export class BaseGenerator {
             return '';
         };
         
+        // UX-I: Sidebar with group labels
         let html = '<div class="nav-section">\n';
-        html += '    <h3>Navigation</h3>\n';
         html += '    <ul>\n';
         html += `        <li><a href="${homePath}"${currentPage === '' ? ' class="active"' : ''}>Home</a></li>\n`;
+        html += '        <li class="nav-group-label">SECURITY</li>\n';
         html += `        <li><a href="${pagesPrefix}profiles/navigation-map.html"${currentPage === 'profiles' && currentSubPage === 'navigation-map' ? ' class="active"' : ''}>Profile Navigation</a></li>\n`;
-        html += `        <li><a href="${pagesPrefix}profiles/index.html"${currentPage === 'profiles' && currentSubPage !== 'navigation-map' ? ' class="active"' : ''}>Security & Access</a></li>\n`;
+        html += `        <li><a href="${pagesPrefix}profiles/index.html"${currentPage === 'profiles' && currentSubPage !== 'navigation-map' && currentSubPage !== 'permission-drilldown' ? ' class="active"' : ''}>Security & Access</a></li>\n`;
+        html += `        <li><a href="${pagesPrefix}profiles/permission-drilldown.html"${currentPage === 'profiles' && currentSubPage === 'permission-drilldown' ? ' class="active"' : ''}>Permission Drilldown</a></li>\n`;
+        html += '        <li class="nav-group-label">DATA & CODE</li>\n';
         html += `        <li><a href="${pagesPrefix}objects/index.html"${isActive('objects')}>Data Model</a></li>\n`;
-        html += `        <li><a href="${pagesPrefix}ui/index.html"${isActive('ui')}>UI Layer</a></li>\n`;
         html += `        <li><a href="${pagesPrefix}apex/index.html"${isActive('apex')}>Apex Layer</a></li>\n`;
         html += `        <li><a href="${pagesPrefix}automation/index.html"${isActive('automation')}>Automation</a></li>\n`;
+        html += '        <li class="nav-group-label">FRONTEND</li>\n';
+        html += `        <li><a href="${pagesPrefix}ui/index.html"${isActive('ui')}>UI Layer</a></li>\n`;
         html += `        <li><a href="${pagesPrefix}integrations/index.html"${isActive('integrations')}>Integrations</a></li>\n`;
+        html += '        <li class="nav-group-label">GOVERNANCE</li>\n';
         html += `        <li><a href="${pagesPrefix}architecture/index.html"${isActive('architecture')}>Architecture</a></li>\n`;
         html += `        <li><a href="${pagesPrefix}deployment/index.html"${isActive('deployment')}>Deployment</a></li>\n`;
-        html += `        <li><a href="${pagesPrefix}maintenance/index.html"${isActive('maintenance')}>Maintenance & Support</a></li>\n`;
+        html += `        <li><a href="${pagesPrefix}maintenance/index.html"${isActive('maintenance')}>Maintenance</a></li>\n`;
+        html += `        <li><a href="${pagesPrefix}maintenance/changes.html"${currentPage === 'maintenance' && currentSubPage === 'changes' ? ' class="active"' : ''}>What Changed</a></li>\n`;
+        html += '        <li class="nav-group-label">TOOLS</li>\n';
         html += `        <li><a href="${pagesPrefix}cross-reference/index.html"${isActive('cross-reference')}>Cross-Reference</a></li>\n`;
         html += `        <li><a href="${pagesPrefix}dashboard/index.html"${isActive('dashboard')}>Dashboard</a></li>\n`;
         html += `        <li><a href="${pagesPrefix}custommetadata/index.html"${isActive('custommetadata')}>Custom Metadata</a></li>\n`;
-        html += `        <li><a href="${pagesPrefix}profiles/permission-drilldown.html"${currentPage === 'profiles' && currentSubPage === 'permission-drilldown' ? ' class="active"' : ''}>Permission Drilldown</a></li>\n`;
-        html += `        <li><a href="${pagesPrefix}maintenance/changes.html"${currentPage === 'maintenance' && currentSubPage === 'changes' ? ' class="active"' : ''}>What Changed</a></li>\n`;
         html += '    </ul>\n';
         html += '</div>\n';
         
