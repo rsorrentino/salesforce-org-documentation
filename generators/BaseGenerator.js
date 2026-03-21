@@ -232,82 +232,12 @@ export class BaseGenerator {
     }
     
     /**
-     * Generate pagination HTML
-     * @param {number} currentPage - Current page number (1-based)
-     * @param {number} totalPages - Total number of pages
-     * @param {string} baseUrl - Base URL for pagination links (e.g., 'index.html' or hash anchor)
-     * @returns {string} HTML for pagination controls
+     * @deprecated Pagination is now handled entirely by JS (initPagination in app.js).
+     * This method returns an empty string so existing generator calls are no-ops.
      */
     generatePagination(currentPage, totalPages, baseUrl = 'index.html') {
-        if (totalPages <= 1) return '';
-        
-        // Extract hash from baseUrl if present
-        const hashMatch = baseUrl.match(/#(.+)$/);
-        const hash = hashMatch ? hashMatch[1] : '';
-        const base = baseUrl.replace(/#.+$/, '');
-        
-        // Use query parameter for pagination (client-side JS will handle it)
-        let html = '<div class="pagination">\n';
-        
-        // Previous button
-        if (currentPage > 1) {
-            const prevPage = currentPage - 1;
-            const prevUrl = prevPage === 1 
-                ? base + (hash ? `#${hash}` : '')
-                : `${base}?page=${prevPage}${hash ? `#${hash}` : ''}`;
-            html += `    <a href="${prevUrl}" class="pagination-btn pagination-prev">&larr; Previous</a>\n`;
-        } else {
-            html += '    <span class="pagination-btn pagination-prev pagination-disabled">&larr; Previous</span>\n';
-        }
-        
-        // Page numbers
-        html += '    <div class="pagination-numbers">\n';
-        
-        // Show first page
-        if (currentPage > 3) {
-            const firstUrl = base + (hash ? `#${hash}` : '');
-            html += `        <a href="${firstUrl}" class="pagination-number">1</a>\n`;
-            if (currentPage > 4) {
-                html += '        <span class="pagination-ellipsis">...</span>\n';
-            }
-        }
-        
-        // Show pages around current
-        const start = Math.max(1, currentPage - 2);
-        const end = Math.min(totalPages, currentPage + 2);
-        
-        for (let i = start; i <= end; i++) {
-            if (i === currentPage) {
-                html += `        <span class="pagination-number pagination-active">${i}</span>\n`;
-            } else {
-                const pageUrl = i === 1 
-                    ? base + (hash ? `#${hash}` : '')
-                    : `${base}?page=${i}${hash ? `#${hash}` : ''}`;
-                html += `        <a href="${pageUrl}" class="pagination-number">${i}</a>\n`;
-            }
-        }
-        
-        // Show last page
-        if (currentPage < totalPages - 2) {
-            if (currentPage < totalPages - 3) {
-                html += '        <span class="pagination-ellipsis">...</span>\n';
-            }
-            const lastUrl = `${base}?page=${totalPages}${hash ? `#${hash}` : ''}`;
-            html += `        <a href="${lastUrl}" class="pagination-number">${totalPages}</a>\n`;
-        }
-        
-        html += '    </div>\n';
-        
-        // Next button
-        if (currentPage < totalPages) {
-            const nextUrl = `${base}?page=${currentPage + 1}${hash ? `#${hash}` : ''}`;
-            html += `    <a href="${nextUrl}" class="pagination-btn pagination-next">Next &rarr;</a>\n`;
-        } else {
-            html += '    <span class="pagination-btn pagination-next pagination-disabled">Next &rarr;</span>\n';
-        }
-        
-        html += '</div>\n';
-        return html;
+        // JS-based pagination in app.js handles all pagination — no static HTML needed.
+        return '';
     }
     
     /**

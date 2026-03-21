@@ -2498,6 +2498,111 @@ body[data-theme="dark"] .diff-removed li { color: #f8d7da; background: rgba(114,
     text-overflow: ellipsis;
 }
 
+/* ── Diagram viewport — scrollable wrapper for zoom/pan ── */
+.diagram-viewport {
+    overflow: auto;
+    position: relative;
+    -webkit-overflow-scrolling: touch;
+    cursor: grab;
+}
+.diagram-viewport:active { cursor: grabbing; }
+.diagram-viewport .mermaid {
+    display: inline-block;
+    transform-origin: top left;
+    transition: transform 0.1s ease;
+}
+
+/* ── Diagram zoom buttons ── */
+.diagram-zoom-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.25rem 0.55rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+    white-space: nowrap;
+}
+.diagram-zoom-btn:hover {
+    background: var(--primary-color);
+    color: #fff;
+    border-color: var(--primary-color);
+}
+body[data-theme="dark"] .diagram-zoom-btn {
+    background: #1e2432;
+    color: #9ca3af;
+    border-color: #30363d;
+}
+body[data-theme="dark"] .diagram-zoom-btn:hover {
+    background: var(--primary-color);
+    color: #fff;
+    border-color: var(--primary-color);
+}
+
+/* ── JS Pagination (replaces server-rendered .pagination) ── */
+.js-pagination {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    padding: 0.5rem 0;
+    margin-top: 0.5rem;
+}
+.pagination-size-label {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+.pagination-size-select {
+    font-size: 0.8rem;
+    padding: 0.2rem 0.4rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--bg-card);
+    color: var(--text-primary);
+    cursor: pointer;
+}
+.pagination-showing {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin: 0 0.25rem;
+}
+.js-pagination .pagination-btn {
+    font-size: 0.8rem;
+    padding: 0.25rem 0.6rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--bg-card);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    text-decoration: none;
+    display: inline-block;
+}
+.js-pagination .pagination-btn:hover:not(:disabled) {
+    background: var(--primary-color);
+    color: #fff;
+    border-color: var(--primary-color);
+}
+.js-pagination .pagination-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+body[data-theme="dark"] .pagination-size-select {
+    background: #1e2432;
+    border-color: #30363d;
+    color: #e5e7eb;
+}
+body[data-theme="dark"] .js-pagination .pagination-btn {
+    background: #1e2432;
+    border-color: #30363d;
+    color: #e5e7eb;
+}
+
 /* ── Dark mode additions ── */
 body[data-theme="dark"] .anchor-link { color: #94a3b8; }
 body[data-theme="dark"] .anchor-link:hover { color: var(--accent-color); }

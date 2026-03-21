@@ -571,6 +571,13 @@ async function initMermaidDiagrams() {
     const mermaidBlocks = document.querySelectorAll('.mermaid');
     if (!mermaidBlocks.length) return;
 
+    // Store original source for theme re-rendering
+    mermaidBlocks.forEach(block => {
+        if (!block.hasAttribute('data-original')) {
+            block.setAttribute('data-original', block.textContent);
+        }
+    });
+
     // UX-G: Show loading placeholder while Mermaid renders
     mermaidBlocks.forEach(block => {
         const container = block.closest('.uml-container') || block.parentElement;
@@ -598,34 +605,9 @@ async function initMermaidDiagrams() {
     if (!window.mermaid) return;
 
     try {
-        // FIX 2B: readable themeVariables — default node is light blue, not red
-        window.mermaid.initialize({
-            startOnLoad: false,
-            securityLevel: 'loose',
-            theme: 'base',
-            themeVariables: {
-                primaryColor: '#F0F4FF',           // default node: light blue background
-                primaryBorderColor: '#4A6FA5',     // blue border
-                primaryTextColor: '#1A3A6B',       // dark blue readable text
-                lineColor: '#718096',              // medium grey arrows
-                secondaryColor: '#F8F9FA',         // secondary bg: off-white
-                tertiaryColor: '#EDF2F7',          // tertiary bg
-                nodeBorder: '#CBD5E0',             // default node border
-                nodeTextColor: '#1a1a1a',          // node text
-                clusterBkg: '#F8F9FA',
-                clusterBorder: '#E2E8F0',
-                edgeLabelBackground: '#FFFFFF',
-                fontFamily: "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif",
-                fontSize: '14px'
-            },
-            flowchart: {
-                htmlLabels: true,
-                curve: 'basis',
-                padding: 20,
-                nodeSpacing: 50,
-                rankSpacing: 60
-            }
-        });
+        // FIX 2B: readable themeVariables — use current theme setting
+        const currentTheme = document.body.getAttribute('data-theme') || 'light';
+        window.mermaid.initialize(getMermaidConfig(currentTheme));
 
         if (typeof window.mermaid.run === 'function') {
             await window.mermaid.run({ querySelector: '.mermaid' });
@@ -655,6 +637,13 @@ async function initMermaidDiagrams() {
                 // UX-G: Remove loading placeholder, restore diagram visibility
                 container.querySelector('.diagram-loading')?.remove();
                 block.style.visibility = '';
+                // Wrap the mermaid element in a diagram-viewport if not already wrapped
+                if (!block.closest('.diagram-viewport')) {
+                    const viewport = document.createElement('div');
+                    viewport.className = 'diagram-viewport';
+                    block.parentNode.insertBefore(viewport, block);
+                    viewport.appendChild(block);
+                }
                 addDiagramToolbar(container);
             }
         });
@@ -677,15 +666,84 @@ function addDiagramToolbar(container) {
     const toolbar = document.createElement('div');
     toolbar.className = 'diagram-toolbar';
 
+    // Track current scale for this diagram
+    const viewport = container.querySelector('.diagram-viewport');
+    const mermaidEl = container.querySelector('.mermaid');
+    let scale = 1.0;
+
+    function applyScale(newScale) {
+        scale = Math.max(0.25, Math.min(5, newScale));
+        if (mermaidEl) mermaidEl.style.transform = `scale(${scale})`;
+        if (mermaidEl) mermaidEl.style.transformOrigin = 'top left';
+    }
+
+    // Zoom In button
+    const zoomInBtn = document.createElement('button');
+    zoomInBtn.type = 'button';
+    zoomInBtn.className = 'diagram-zoom-btn';
+    zoomInBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Zoom In';
+    zoomInBtn.setAttribute('aria-label', 'Zoom in');
+    zoomInBtn.addEventListener('click', () => applyScale(scale + 0.25));
+    toolbar.appendChild(zoomInBtn);
+
+    // Zoom Out button
+    const zoomOutBtn = document.createElement('button');
+    zoomOutBtn.type = 'button';
+    zoomOutBtn.className = 'diagram-zoom-btn';
+    zoomOutBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/></svg> Zoom Out';
+    zoomOutBtn.setAttribute('aria-label', 'Zoom out');
+    zoomOutBtn.addEventListener('click', () => applyScale(scale - 0.25));
+    toolbar.appendChild(zoomOutBtn);
+
+    // Fit to View button
+    const fitBtn = document.createElement('button');
+    fitBtn.type = 'button';
+    fitBtn.className = 'diagram-zoom-btn';
+    fitBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M16 21h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg> Fit';
+    fitBtn.setAttribute('aria-label', 'Fit to view');
+    fitBtn.addEventListener('click', () => applyScale(1.0));
+    toolbar.appendChild(fitBtn);
+
+    // Download SVG button
+    const dlBtn = document.createElement('button');
+    dlBtn.type = 'button';
+    dlBtn.className = 'diagram-zoom-btn';
+    dlBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> SVG';
+    dlBtn.setAttribute('aria-label', 'Download SVG');
+    dlBtn.addEventListener('click', () => {
+        const svg = container.querySelector('.mermaid svg');
+        if (!svg) return;
+        const svgData = new XMLSerializer().serializeToString(svg);
+        const blob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'diagram.svg';
+        a.click();
+        URL.revokeObjectURL(url);
+    });
+    toolbar.appendChild(dlBtn);
+
     // Fullscreen button
     const fsBtn = document.createElement('button');
     fsBtn.type = 'button';
-    fsBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg> Full Screen';
+    fsBtn.className = 'diagram-zoom-btn';
+    fsBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg> Full Screen';
     fsBtn.setAttribute('aria-label', 'View diagram full screen');
     fsBtn.addEventListener('click', () => openDiagramFullscreen(container));
     toolbar.appendChild(fsBtn);
 
-    // Insert toolbar before the mermaid div
+    // Ctrl+scroll to zoom
+    if (viewport) {
+        viewport.addEventListener('wheel', (e) => {
+            if (!e.ctrlKey) return;
+            e.preventDefault();
+            const delta = e.deltaY > 0 ? -0.25 : 0.25;
+            applyScale(scale + delta);
+        }, { passive: false });
+    }
+
+    // Insert toolbar before the viewport (or first child)
     container.insertBefore(toolbar, container.firstChild);
 }
 
@@ -731,78 +789,110 @@ function openDiagramFullscreen(container) {
 }
 
 function initPagination() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const currentPage = parseInt(urlParams.get('page'), 10) || 1;
-    const itemsPerPage = 50;
+    // Hide any server-rendered HTML pagination — JS pagination takes over
+    document.querySelectorAll('.pagination').forEach(p => { p.style.display = 'none'; });
 
     const tables = document.querySelectorAll('.data-table');
     tables.forEach(table => {
         const rows = Array.from(table.querySelectorAll('tbody tr'));
         const totalItems = rows.length;
-        const totalPages = Math.ceil(totalItems / itemsPerPage);
+        if (totalItems === 0) return;
 
-        let pagination = null;
         const tableContainer = table.closest('.table-container') || table.parentElement;
         const mainContent = table.closest('.main-content') || table.closest('section') || document.body;
 
-        if (tableContainer) {
-            pagination = tableContainer.nextElementSibling?.classList?.contains('pagination')
-                ? tableContainer.nextElementSibling
-                : tableContainer.parentElement?.querySelector('.pagination');
-        }
-        if (!pagination) {
-            pagination = mainContent.querySelector('.pagination');
-        }
-        if (!pagination) {
-            const tableSection = table.closest('section');
-            if (tableSection) {
-                pagination = tableSection.querySelector('.pagination');
-            }
-        }
+        // Don't add JS pagination if initTableControls already handles this table
+        if (tableContainer?.querySelector('.table-controls')) return;
 
-        if (totalPages <= 1) {
-            if (pagination) {
-                pagination.style.display = 'none';
-            }
-            const paginationInfo = mainContent.querySelector('.pagination-info') ||
-                tableContainer?.querySelector('.pagination-info') ||
-                document.getElementById('objectsPaginationInfo');
-            if (paginationInfo && totalItems > 0) {
-                paginationInfo.textContent = `Showing 1-${totalItems} of ${totalItems}`;
-                paginationInfo.style.display = 'block';
-            }
-            return;
-        }
+        // Build JS pagination UI
+        const pagerWrap = document.createElement('div');
+        pagerWrap.className = 'js-pagination';
 
-        if (pagination) {
-            pagination.style.display = 'flex';
-            pagination.style.visibility = 'visible';
-            pagination.style.opacity = '1';
-        } else {
-            const baseUrl = window.location.pathname.split('/').pop() || 'index.html';
-            const hash = window.location.hash || '';
-            const paginationHtml = generatePaginationHTML(currentPage, totalPages, baseUrl, hash);
-            if (tableContainer && tableContainer.parentElement) {
-                const paginationDiv = document.createElement('div');
-                paginationDiv.className = 'pagination';
-                paginationDiv.innerHTML = paginationHtml;
-                tableContainer.parentElement.insertBefore(paginationDiv, tableContainer.nextSibling);
-            }
-        }
-
-        const startIndex = (currentPage - 1) * itemsPerPage;
-        const endIndex = startIndex + itemsPerPage;
-        rows.forEach((row, index) => {
-            row.style.display = index >= startIndex && index < endIndex ? '' : 'none';
+        // Rows-per-page selector
+        const sizeLabel = document.createElement('label');
+        sizeLabel.className = 'pagination-size-label';
+        sizeLabel.textContent = 'Rows per page:';
+        const sizeSelect = document.createElement('select');
+        sizeSelect.className = 'pagination-size-select';
+        [25, 50, 100, { value: 'All', label: 'All' }].forEach(opt => {
+            const option = document.createElement('option');
+            option.value = typeof opt === 'object' ? opt.value : String(opt);
+            option.textContent = typeof opt === 'object' ? opt.label : String(opt);
+            if (option.value === '50') option.selected = true;
+            sizeSelect.appendChild(option);
         });
 
-        const paginationInfo = mainContent.querySelector('.pagination-info') ||
+        // "Showing X-Y of Z" info span
+        const infoSpan = document.createElement('span');
+        infoSpan.className = 'pagination-showing';
+
+        // Prev/Next buttons
+        const prevBtn = document.createElement('button');
+        prevBtn.type = 'button';
+        prevBtn.className = 'pagination-btn pagination-prev';
+        prevBtn.textContent = 'Prev';
+
+        const nextBtn = document.createElement('button');
+        nextBtn.type = 'button';
+        nextBtn.className = 'pagination-btn pagination-next';
+        nextBtn.textContent = 'Next';
+
+        pagerWrap.appendChild(sizeLabel);
+        pagerWrap.appendChild(sizeSelect);
+        pagerWrap.appendChild(prevBtn);
+        pagerWrap.appendChild(infoSpan);
+        pagerWrap.appendChild(nextBtn);
+
+        // Insert after table container
+        if (tableContainer && tableContainer.parentElement) {
+            tableContainer.parentElement.insertBefore(pagerWrap, tableContainer.nextSibling);
+        }
+
+        // Also update any existing pagination-info element
+        const existingInfo = mainContent.querySelector('.pagination-info') ||
             tableContainer?.querySelector('.pagination-info') ||
             document.getElementById('objectsPaginationInfo');
-        if (paginationInfo) {
-            paginationInfo.textContent = `Showing ${startIndex + 1}-${Math.min(endIndex, totalItems)} of ${totalItems}`;
-            paginationInfo.style.display = 'block';
+
+        let page = 1;
+        function getPageSize() {
+            return sizeSelect.value === 'All' ? totalItems : (parseInt(sizeSelect.value, 10) || 50);
         }
+        function getTotalPages() {
+            return Math.max(1, Math.ceil(totalItems / getPageSize()));
+        }
+        function render() {
+            const size = getPageSize();
+            const totalPages = getTotalPages();
+            page = Math.min(Math.max(1, page), totalPages);
+            const start = (page - 1) * size;
+            const end = Math.min(start + size, totalItems);
+
+            rows.forEach((row, i) => {
+                row.style.display = (size === totalItems || (i >= start && i < end)) ? '' : 'none';
+            });
+
+            const showingText = size === totalItems
+                ? `Showing 1-${totalItems} of ${totalItems}`
+                : `Showing ${start + 1}-${end} of ${totalItems}`;
+            infoSpan.textContent = showingText;
+            if (existingInfo) {
+                existingInfo.textContent = showingText;
+                existingInfo.style.display = 'block';
+            }
+
+            prevBtn.disabled = page <= 1;
+            nextBtn.disabled = page >= totalPages;
+            // Hide pager controls when everything fits on one page
+            const onePage = totalPages <= 1 && size !== totalItems;
+            prevBtn.style.display = onePage ? 'none' : '';
+            nextBtn.style.display = onePage ? 'none' : '';
+        }
+
+        prevBtn.addEventListener('click', () => { page -= 1; render(); });
+        nextBtn.addEventListener('click', () => { page += 1; render(); });
+        sizeSelect.addEventListener('change', () => { page = 1; render(); });
+
+        render();
     });
 }
 
@@ -1062,10 +1152,9 @@ function initTheme() {
     }
 }
 
-function setMermaidTheme(theme) {
-    if (!window.mermaid) return;
+function getMermaidConfig(theme) {
     const dark = theme === 'dark';
-    window.mermaid.initialize({
+    return {
         startOnLoad: false,
         securityLevel: 'loose',
         theme: 'base',
@@ -1093,12 +1182,55 @@ function setMermaidTheme(theme) {
             clusterBkg: '#F8F9FA',
             edgeLabelBackground: '#FFFFFF',
             fontSize: '14px'
+        },
+        flowchart: {
+            htmlLabels: true,
+            curve: 'basis',
+            padding: 20,
+            nodeSpacing: 50,
+            rankSpacing: 60
+        }
+    };
+}
+
+function setMermaidTheme(theme) {
+    if (!window.mermaid) return;
+
+    window.mermaid.initialize(getMermaidConfig(theme));
+
+    // Restore original source and re-render all diagrams with new theme
+    document.querySelectorAll('.mermaid[data-processed]').forEach(el => {
+        el.removeAttribute('data-processed');
+        const original = el.getAttribute('data-original');
+        if (original) el.textContent = original;
+        // Remove any existing toolbar (will be re-added after render)
+        const container = el.closest('.uml-container') || el.parentElement;
+        container?.querySelector('.diagram-toolbar')?.remove();
+        // Unwrap from viewport so it can be re-wrapped cleanly after re-render
+        const viewport = el.closest('.diagram-viewport');
+        if (viewport) {
+            viewport.parentNode.insertBefore(el, viewport);
+            viewport.remove();
         }
     });
 
     try {
         if (typeof window.mermaid.run === 'function') {
-            window.mermaid.run({ querySelector: '.mermaid' });
+            window.mermaid.run({ querySelector: '.mermaid' }).then(() => {
+                document.querySelectorAll('.mermaid').forEach(block => {
+                    const container = block.closest('.uml-container') || block.parentElement;
+                    if (container) {
+                        container.querySelector('.diagram-loading')?.remove();
+                        if (!block.closest('.diagram-viewport')) {
+                            const viewport = document.createElement('div');
+                            viewport.className = 'diagram-viewport';
+                            block.parentNode.insertBefore(viewport, block);
+                            viewport.appendChild(block);
+                        }
+                        addDiagramToolbar(container);
+                    }
+                });
+            }).catch(err => console.warn('Mermaid theme re-render failed:', err));
         }
     } catch (error) {
         console.warn('Mermaid theme update failed:', error);
