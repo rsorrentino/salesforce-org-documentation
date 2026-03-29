@@ -56,6 +56,8 @@ export class MkDocsGenerator extends BaseGenerator {
         this.docsDir = path.join(toolDir, config.docsOutputDir || 'docs');
         this.pandocNavEntries = pandocNavEntries;
         this.type = 'mkdocs';
+        // Consistent timestamp for all pages in this generation run
+        this.generatedAt = new Date().toISOString();
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -79,6 +81,10 @@ export class MkDocsGenerator extends BaseGenerator {
         await this._generateMaintenanceDocs();
         await this._generateCustomMetadataDocs();
         await this._generateSourceDocs();
+
+        // AI-agent integration artefacts (generated last so they can reflect all pages)
+        await this._generateLlmsTxt();
+        await this._generateAiManifest();
 
         await this._generateMkDocsConfig();
 
@@ -140,6 +146,8 @@ export class MkDocsGenerator extends BaseGenerator {
         const md = `---
 title: Salesforce Org Documentation
 description: Auto-generated technical documentation for the Salesforce organisation.
+entity_type: overview
+generated_at: "${this.generatedAt}"
 tags:
   - salesforce
   - overview
@@ -147,7 +155,7 @@ tags:
 
 # Salesforce Technical Documentation
 
-> Generated on **${new Date().toUTCString()}**
+> Generated on **${this.generatedAt}**
 
 ## Organisation Summary
 
@@ -196,6 +204,8 @@ ${tableRows}
         const overviewMd = `---
 title: Apex Classes & Triggers
 description: All Apex classes and triggers in this Salesforce org.
+entity_type: section_index
+generated_at: "${this.generatedAt}"
 tags:
   - apex
   - salesforce
@@ -237,8 +247,16 @@ ${triggerRows || '| *(none found)* | | |'}
             : '';
 
         const md = `---
-title: "${this._esc(name)}"
-description: "Apex class documentation for ${this._esc(name)}"
+title: "${this._escYaml(name)}"
+description: "Apex class documentation for ${this._escYaml(name)}"
+entity_type: apex_class
+api_name: "${this._escYaml(name)}"
+generated_at: "${this.generatedAt}"
+is_test: ${cls.isTest ? 'true' : 'false'}
+method_count: ${(cls.methods || []).length}
+sharing_model: "${this._escYaml(cls.sharingModel || 'Inherited')}"${(cls.referencedObjects || []).length > 0 ? `
+referenced_objects:${this._yamlList(cls.referencedObjects)}` : ''}${cls.file ? `
+source_file: "${this._escYaml(cls.file)}"` : ''}
 tags:
   - apex
   - class
@@ -272,6 +290,8 @@ ${referencedObjects ? `## Referenced Objects\n\n${referencedObjects}\n` : ''}
         const overviewMd = `---
 title: Custom Objects & Data Model
 description: All custom objects and their fields in this Salesforce org.
+entity_type: section_index
+generated_at: "${this.generatedAt}"
 tags:
   - objects
   - data-model
@@ -302,9 +322,20 @@ ${overviewRows || '| *(none found)* | | |'}
             `| ${this._esc(r.name || '')} | ${this._esc(r.relatedObject || '')} | ${this._esc(r.type || '')} |`
         ).join('\n');
 
+        const relatedObjectNames = (obj.relationships || [])
+            .map(r => r.relatedObject)
+            .filter(Boolean);
+
         const md = `---
-title: "${this._esc(name)}"
-description: "Object documentation for ${this._esc(name)}"
+title: "${this._escYaml(name)}"
+description: "Object documentation for ${this._escYaml(name)}"
+entity_type: custom_object
+api_name: "${this._escYaml(name)}"
+label: "${this._escYaml(obj.label || '')}"
+generated_at: "${this.generatedAt}"
+field_count: ${(obj.fields || []).length}
+relationship_count: ${(obj.relationships || []).length}${relatedObjectNames.length > 0 ? `
+related_objects:${this._yamlList(relatedObjectNames)}` : ''}
 tags:
   - objects
   - data-model
@@ -359,6 +390,8 @@ ${relationships ? `## Relationships\n\n| Relationship Name | Related Object | Ty
         const md = `---
 title: Automation & Flows
 description: Flows, Apex triggers, and validation rules.
+entity_type: section_index
+generated_at: "${this.generatedAt}"
 tags:
   - automation
   - flows
@@ -413,6 +446,8 @@ ${mermaidFlows}
         const md = `---
 title: Profiles & Permission Sets
 description: All profiles and permission sets defined in this Salesforce org.
+entity_type: section_index
+generated_at: "${this.generatedAt}"
 tags:
   - profiles
   - permissions
@@ -455,6 +490,8 @@ ${psRows || '| *(none found)* | |'}
         const md = `---
 title: UI Components
 description: LWC, Aura, FlexiPage, and Visualforce components.
+entity_type: section_index
+generated_at: "${this.generatedAt}"
 tags:
   - ui
   - lwc
@@ -503,6 +540,8 @@ ${vfRows || '| *(none found)* |'}
         const md = `---
 title: Integrations
 description: Named credentials and external system connections.
+entity_type: section_index
+generated_at: "${this.generatedAt}"
 tags:
   - integrations
   - named-credentials
@@ -543,6 +582,8 @@ ${credRows || '| *(none found)* | | |'}
         const md = `---
 title: Architecture Overview
 description: High-level architecture of the Salesforce org.
+entity_type: section_index
+generated_at: "${this.generatedAt}"
 tags:
   - architecture
   - salesforce
@@ -579,6 +620,8 @@ ${mermaidDiagram}
         const md = `---
 title: Deployment & Environments
 description: Deployment tracking and environment information.
+entity_type: section_index
+generated_at: "${this.generatedAt}"
 tags:
   - deployment
   - environments
@@ -595,7 +638,7 @@ tags:
 
 | Property | Value |
 |----------|-------|
-| **Documentation Generated** | ${new Date().toUTCString()} |
+| **Documentation Generated** | ${this.generatedAt} |
 | **Source Directory** | configured via \`SOURCE_DIR\` environment variable |
 
 ## Deployment Checklist
@@ -619,6 +662,8 @@ tags:
         const md = `---
 title: Documentation Health
 description: Documentation coverage and health metrics for this Salesforce org.
+entity_type: section_index
+generated_at: "${this.generatedAt}"
 tags:
   - maintenance
   - health
@@ -657,6 +702,8 @@ tags:
         const md = `---
 title: Custom Metadata
 description: Custom metadata types and records.
+entity_type: section_index
+generated_at: "${this.generatedAt}"
 tags:
   - custom-metadata
   - salesforce
@@ -851,6 +898,8 @@ ${fileRows}
         const md = `---
 title: Source Navigator
 description: Browse and read the source files for all analyzed Salesforce components.
+entity_type: section_index
+generated_at: "${this.generatedAt}"
 tags:
   - source
   - salesforce
@@ -951,6 +1000,172 @@ ${sections || '*No source files found.*'}
         }
 
         return nav;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // AI-agent integration: llms.txt + ai-manifest.json
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Generate docs/llms.txt – a plain-text file following the llmstxt.org
+     * convention that describes the documentation structure for LLM / AI agents.
+     * Agents that receive a docs root URL can fetch <root>/llms.txt first to
+     * understand which pages exist and how they relate, before fetching
+     * individual .md files.
+     */
+    async _generateLlmsTxt() {
+        const d = this.data;
+        const counts = {
+            apexClasses:  Object.keys(d.apexClasses    || {}).length,
+            objects:      Object.keys(d.objects        || {}).length,
+            flows:        Object.keys(d.flows          || {}).length,
+            lwc:          Object.keys(d.lwcComponents  || {}).length,
+            aura:         Object.keys(d.auraComponents || {}).length,
+            profiles:     Object.keys(d.profiles       || {}).length,
+            permSets:     Object.keys(d.permissionSets || {}).length,
+            triggers:     Object.keys(d.triggers       || {}).length,
+        };
+
+        const siteName = (this.config.mkdocs || {}).site_name || 'Salesforce Technical Documentation';
+
+        const apexLinks = Object.keys(d.apexClasses || {})
+            .sort()
+            .map(name => `- [${name}](apex/${name}.md)`)
+            .join('\n');
+
+        const objectLinks = Object.keys(d.objects || {})
+            .sort()
+            .map(name => `- [${name}](objects/${name}.md)`)
+            .join('\n');
+
+        const txt =
+`# ${siteName}
+
+> Auto-generated technical documentation for a Salesforce organisation.
+> Generated at: ${this.generatedAt}
+> Machine-readable index: [ai-manifest.json](ai-manifest.json)
+
+## Summary
+
+This documentation covers all metadata components of a Salesforce org:
+
+- Apex Classes: ${counts.apexClasses}
+- Custom Objects: ${counts.objects}
+- Flows: ${counts.flows}
+- LWC Components: ${counts.lwc}
+- Aura Components: ${counts.aura}
+- Profiles: ${counts.profiles}
+- Permission Sets: ${counts.permSets}
+- Apex Triggers: ${counts.triggers}
+
+## Section Index Pages
+
+- [Home](index.md): Dashboard overview with all entity counts and navigation.
+- [Apex Classes & Triggers](apex/index.md): All Apex classes and triggers with methods and object references.
+- [Custom Objects & Data Model](objects/index.md): All custom objects with fields and relationships.
+- [Automation & Flows](automation/index.md): Flows, Apex triggers, and validation rules.
+- [Profiles & Permission Sets](profiles/index.md): All security profiles and permission sets.
+- [UI Components](ui/index.md): LWC, Aura, FlexiPage, and Visualforce components.
+- [Integrations](integrations/index.md): Named credentials and external system connections.
+- [Architecture](architecture/index.md): High-level architecture diagram and layer summary.
+- [Deployment](deployment/index.md): Deployment checklist and environment information.
+- [Documentation Health](maintenance/index.md): Documentation coverage metrics.
+- [Custom Metadata](custommetadata/index.md): Custom metadata types and records.
+- [Source Navigator](source/index.md): Browse source files for all components.
+
+## Individual Apex Class Pages
+
+${apexLinks || '*(none)*'}
+
+## Individual Object Pages
+
+${objectLinks || '*(none)*'}
+`;
+        await this._writeMd('llms.txt', txt);
+        console.log('    llms.txt generated.');
+    }
+
+    /**
+     * Generate docs/ai-manifest.json – a machine-readable JSON index of every
+     * generated documentation page.  External apps can fetch this single file
+     * to discover all pages, their types, API names, and relationships without
+     * reading each .md file individually.
+     *
+     * Schema:
+     *   generated_at   – ISO-8601 timestamp
+     *   entity_counts  – total count per Salesforce metadata type
+     *   sections       – per-section { index, pages[] }
+     *   all_pages      – flat array of { path, title, entity_type, api_name? }
+     */
+    async _generateAiManifest() {
+        const d = this.data;
+
+        const apexPages = Object.entries(d.apexClasses || {}).map(([name, cls]) => ({
+            path:        `apex/${name}.md`,
+            title:       name,
+            entity_type: 'apex_class',
+            api_name:    name,
+            section:     'apex',
+            ...(cls.isTest !== undefined ? { is_test: Boolean(cls.isTest) } : {}),
+            method_count: (cls.methods || []).length,
+        }));
+
+        const objectPages = Object.entries(d.objects || {}).map(([name, obj]) => ({
+            path:        `objects/${name}.md`,
+            title:       obj.label || name,
+            entity_type: 'custom_object',
+            api_name:    name,
+            section:     'objects',
+            field_count: (obj.fields || []).length,
+        }));
+
+        const sectionIndexPages = [
+            { path: 'index.md',               title: 'Salesforce Org Documentation',  entity_type: 'overview',       section: 'root' },
+            { path: 'apex/index.md',           title: 'Apex Classes & Triggers',       entity_type: 'section_index',  section: 'apex' },
+            { path: 'objects/index.md',        title: 'Custom Objects & Data Model',   entity_type: 'section_index',  section: 'objects' },
+            { path: 'automation/index.md',     title: 'Automation & Flows',            entity_type: 'section_index',  section: 'automation' },
+            { path: 'profiles/index.md',       title: 'Profiles & Permission Sets',    entity_type: 'section_index',  section: 'profiles' },
+            { path: 'ui/index.md',             title: 'UI Components',                 entity_type: 'section_index',  section: 'ui' },
+            { path: 'integrations/index.md',   title: 'Integrations',                  entity_type: 'section_index',  section: 'integrations' },
+            { path: 'architecture/index.md',   title: 'Architecture Overview',         entity_type: 'section_index',  section: 'architecture' },
+            { path: 'deployment/index.md',     title: 'Deployment & Environments',     entity_type: 'section_index',  section: 'deployment' },
+            { path: 'maintenance/index.md',    title: 'Documentation Health',          entity_type: 'section_index',  section: 'maintenance' },
+            { path: 'custommetadata/index.md', title: 'Custom Metadata',               entity_type: 'section_index',  section: 'custommetadata' },
+            { path: 'source/index.md',         title: 'Source Navigator',              entity_type: 'section_index',  section: 'source' },
+        ];
+
+        const manifest = {
+            generated_at: this.generatedAt,
+            entity_counts: {
+                apex_classes:    Object.keys(d.apexClasses    || {}).length,
+                custom_objects:  Object.keys(d.objects        || {}).length,
+                flows:           Object.keys(d.flows          || {}).length,
+                lwc_components:  Object.keys(d.lwcComponents  || {}).length,
+                aura_components: Object.keys(d.auraComponents || {}).length,
+                profiles:        Object.keys(d.profiles       || {}).length,
+                permission_sets: Object.keys(d.permissionSets || {}).length,
+                apex_triggers:   Object.keys(d.triggers       || {}).length,
+                flexipages:      Object.keys(d.flexiPages     || {}).length,
+            },
+            sections: {
+                apex:          { index: 'apex/index.md',           pages: apexPages.map(p => p.path) },
+                objects:       { index: 'objects/index.md',        pages: objectPages.map(p => p.path) },
+                automation:    { index: 'automation/index.md',     pages: [] },
+                profiles:      { index: 'profiles/index.md',       pages: [] },
+                ui:            { index: 'ui/index.md',             pages: [] },
+                integrations:  { index: 'integrations/index.md',  pages: [] },
+                architecture:  { index: 'architecture/index.md',   pages: [] },
+                deployment:    { index: 'deployment/index.md',     pages: [] },
+                maintenance:   { index: 'maintenance/index.md',    pages: [] },
+                custommetadata:{ index: 'custommetadata/index.md', pages: [] },
+                source:        { index: 'source/index.md',         pages: [] },
+            },
+            all_pages: [...sectionIndexPages, ...apexPages, ...objectPages],
+        };
+
+        const manifestPath = path.join(this.docsDir, 'ai-manifest.json');
+        await fs.writeFile(manifestPath, JSON.stringify(manifest, null, 2), 'utf-8');
+        console.log('    ai-manifest.json generated.');
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -1058,5 +1273,34 @@ ${sections || '*No source files found.*'}
      */
     _safeName(p) {
         return String(p).replace(/[^a-zA-Z0-9]/g, '_');
+    }
+
+    /**
+     * Escape characters that have special meaning inside a YAML double-quoted
+     * scalar: backslashes, double-quotes, and control characters.
+     * Used when interpolating values into front-matter `"..."` strings.
+     */
+    _escYaml(text) {
+        if (!text && text !== 0) return '';
+        return String(text)
+            .replace(/\\/g, '\\\\')
+            .replace(/"/g, '\\"')
+            .replace(/\n/g, ' ');
+    }
+
+    /**
+     * Render an array as a YAML block sequence suitable for embedding
+     * directly after a mapping key in front-matter.
+     *
+     * Returns " []" for empty arrays, or a multi-line string starting with
+     * a newline for non-empty arrays so callers can write:
+     *
+     *   referenced_objects:${this._yamlList(items)}
+     *
+     * producing valid YAML whether the list is empty or not.
+     */
+    _yamlList(items) {
+        if (!items || items.length === 0) return ' []';
+        return items.map(i => `\n  - "${this._escYaml(String(i))}"`).join('');
     }
 }
