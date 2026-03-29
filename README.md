@@ -56,6 +56,18 @@ node generate.js ../my-salesforce-repo
 
 The path is resolved to an absolute path, validated, and logged at startup. An error message with usage hints is printed if the directory does not exist.
 
+### Source directory auto-discovery
+
+The tool automatically discovers where Salesforce metadata lives inside the target repository:
+
+1. **`sfdx-project.json` (recommended)** – if the repo contains an `sfdx-project.json`, the tool reads the `packageDirectories` array and scans each declared package path for source roots.  This means projects that use a package directory name other than `force-app` (e.g. `src`, `app`, `mypackage`) are handled automatically.
+
+2. **Heuristic fallback** – if no `sfdx-project.json` is present, the tool looks for a `force-app` directory first; if that is absent too, it searches the repository root itself.
+
+3. Within every candidate package directory the tool searches up to **two directory levels** deep for sub-directories that contain recognised metadata-type folders (`classes`, `objects`, `flows`, etc.).  This covers both the standard SFDX layout (`force-app/main/default/`) and flat layouts where metadata lives directly under the package root.
+
+**Multiple package directories** are fully supported; metadata from all declared packages is merged into a single documentation set.
+
 ### Daily workflow
 
 ```bash

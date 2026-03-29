@@ -96,8 +96,146 @@ class SalesforceDocGenerator {
             parseNodeValue: false,        // FIX 1A: keep node values as strings (prevent true→boolean)
             trimValues: true
         });
+
+        // Populated by initSourceDirs() before analysis begins
+        this.sourceDirs = [];
     }
-    
+
+    /**
+     * Initialize source directories from sfdx-project.json or fallback discovery.
+     *
+     * Priority:
+     *  1. packageDirectories paths declared in sfdx-project.json at repoRoot
+     *  2. A 'force-app' directory at repoRoot (legacy default)
+     *  3. repoRoot itself
+     *
+     * Within each package directory the method searches up to two directory levels
+     * deep for subdirectories that contain at least one recognised metadata-type
+     * folder (classes, objects, flows …).  If none are found, main/default is
+     * assumed.
+     */
+    async initSourceDirs() {
+        this.sourceDirs = [];
+        const sfdxProjectPath = path.join(this.repoRoot, 'sfdx-project.json');
+        let packageDirPaths = [];
+
+        try {
+            const content = await fs.readFile(sfdxProjectPath, 'utf-8');
+            const project = JSON.parse(content);
+            if (project.packageDirectories && Array.isArray(project.packageDirectories)) {
+                for (const pkg of project.packageDirectories) {
+                    if (pkg.path) {
+                        const resolved = path.resolve(this.repoRoot, pkg.path);
+                        try {
+                            await fs.access(resolved);
+                            packageDirPaths.push(resolved);
+                        } catch { /* skip missing */ }
+                    }
+                }
+            }
+            if (packageDirPaths.length > 0) {
+                console.log(`  Discovered ${packageDirPaths.length} package director(y/ies) from sfdx-project.json`);
+            }
+        } catch {
+            // sfdx-project.json not found or invalid – use heuristic fallback
+        }
+
+        if (packageDirPaths.length === 0) {
+            const forceAppPath = path.join(this.repoRoot, 'force-app');
+            try {
+                await fs.access(forceAppPath);
+                packageDirPaths.push(forceAppPath);
+            } catch {
+                packageDirPaths.push(this.repoRoot);
+            }
+        }
+
+        for (const pkgDir of packageDirPaths) {
+            const roots = await this._findSourceRoots(pkgDir);
+            this.sourceDirs.push(...roots);
+        }
+
+        if (this.sourceDirs.length === 0) {
+            this.sourceDirs = [path.join(this.repoRoot, 'force-app', 'main', 'default')];
+        }
+
+        console.log(`  Source director(y/ies): ${this.sourceDirs.join(', ')}`);
+    }
+
+    /**
+     * Find source roots within a package directory.
+     *
+     * A source root is a directory that directly contains one or more recognised
+     * Salesforce metadata-type sub-folders (classes, objects, flows …).
+     *
+     * The scan goes at most two levels deep so that the common
+     * `<packageDir>/main/default/` layout is discovered automatically.
+     *
+     * @param {string} pkgDir - Root of the package directory to inspect
+     * @returns {Promise<string[]>} Resolved source-root paths
+     */
+    async _findSourceRoots(pkgDir) {
+        const METADATA_INDICATORS = [
+            'classes', 'objects', 'flows', 'lwc', 'aura',
+            'triggers', 'profiles', 'permissionsets',
+        ];
+
+        // 1. Is pkgDir itself the source root (flat / single-level layout)?
+        for (const type of METADATA_INDICATORS) {
+            try {
+                await fs.access(path.join(pkgDir, type));
+                return [pkgDir];
+            } catch { /* continue */ }
+        }
+
+        // 2. Scan two levels deep for directories that contain metadata type folders.
+        //    Covers the standard SFDX layout  <packageDir>/<namespace>/<source>/
+        //    e.g. force-app/main/default/  or  src/main/default/
+        const found = new Set();
+        try {
+            const level1 = await fs.readdir(pkgDir, { withFileTypes: true });
+            for (const l1 of level1) {
+                if (!l1.isDirectory()) continue;
+                const l1Dir = path.join(pkgDir, l1.name);
+                try {
+                    const level2 = await fs.readdir(l1Dir, { withFileTypes: true });
+                    for (const l2 of level2) {
+                        if (!l2.isDirectory()) continue;
+                        const l2Dir = path.join(l1Dir, l2.name);
+                        for (const type of METADATA_INDICATORS) {
+                            try {
+                                await fs.access(path.join(l2Dir, type));
+                                found.add(l2Dir);
+                                break;
+                            } catch { /* continue */ }
+                        }
+                    }
+                } catch { /* continue */ }
+            }
+        } catch { /* continue */ }
+
+        return found.size > 0 ? [...found] : [path.join(pkgDir, 'main', 'default')];
+    }
+
+    /**
+     * Return all existing metadata directories for a given metadata type,
+     * searching across every discovered source root.
+     *
+     * @param {string} type - Metadata type folder name (e.g. 'classes', 'objects')
+     * @returns {Promise<string[]>} Existing directory paths (may be empty)
+     */
+    async getMetadataDirs(type) {
+        const dirs = [];
+        for (const sourceDir of this.sourceDirs) {
+            const dir = path.join(sourceDir, type);
+            try {
+                await fs.access(dir);
+                dirs.push(dir);
+            } catch { /* skip missing */ }
+        }
+        return dirs;
+    }
+
     /**
      * Read a template file and replace placeholders with data
      * @param {string} templatePath - Path to template file
@@ -212,6 +350,9 @@ class SalesforceDocGenerator {
      */
     async analyzeAll() {
         console.log('Analyzing Salesforce metadata...');
+
+        // Discover source directories from sfdx-project.json or heuristic fallback
+        await this.initSourceDirs();
         
         // Analyze profiles
         console.log('  Analyzing profiles...');
@@ -374,7 +515,7 @@ class SalesforceDocGenerator {
     async analyzeProfiles() {
         const profileDirs = [
             path.join(this.repoRoot, 'releases', 'R1', 'metadata', 'profiles'),
-            path.join(this.repoRoot, 'force-app', 'main', 'default', 'profiles')
+            ...(await this.getMetadataDirs('profiles'))
         ];
         
         for (const profileDir of profileDirs) {
@@ -498,75 +639,70 @@ class SalesforceDocGenerator {
      * Analyze Permission Sets
      */
     async analyzePermissionSets() {
-        const psDir = path.join(this.repoRoot, 'force-app', 'main', 'default', 'permissionsets');
-        try {
-            await fs.access(psDir);
-        } catch {
-            return;
-        }
-        
-        const files = await this.findFiles(psDir, '*.permissionset-meta.xml');
-        for (const filePath of files) {
-            const root = await this.parseXML(filePath);
-            if (!root || !root.PermissionSet) continue;
-            
-            const ps = root.PermissionSet;
-            let psName = this.getText(ps.fullName);
-            if (!psName) {
-                psName = this.getText(ps.label);
+        for (const psDir of await this.getMetadataDirs('permissionsets')) {
+            const files = await this.findFiles(psDir, '*.permissionset-meta.xml');
+            for (const filePath of files) {
+                const root = await this.parseXML(filePath);
+                if (!root || !root.PermissionSet) continue;
+
+                const ps = root.PermissionSet;
+                let psName = this.getText(ps.fullName);
                 if (!psName) {
-                    psName = path.basename(filePath, '.permissionset-meta.xml');
+                    psName = this.getText(ps.label);
+                    if (!psName) {
+                        psName = path.basename(filePath, '.permissionset-meta.xml');
+                    }
                 }
-            }
-            
-            const psData = {
-                name: psName,
-                file: path.relative(this.repoRoot, filePath).replace(/\\/g, '/'),
-                description: this.getText(ps.description, ''),
-                classes: [],
-                pages: [],
-                tabs: [],
-                objectPermissions: {},
-                fieldPermissions: {},
-                customPermissions: [],
-            };
-            
-            // Extract class access
-            const classes = this.findElements(ps, 'classAccesses');
-            for (const cls of classes) {
-                const clsName = this.getText(cls.apexClass);
-                if (clsName) {
-                    psData.classes.push({
-                        name: clsName,
-                        enabled: this.getText(cls.enabled) === 'true'
-                    });
+
+                const psData = {
+                    name: psName,
+                    file: path.relative(this.repoRoot, filePath).replace(/\\/g, '/'),
+                    description: this.getText(ps.description, ''),
+                    classes: [],
+                    pages: [],
+                    tabs: [],
+                    objectPermissions: {},
+                    fieldPermissions: {},
+                    customPermissions: [],
+                };
+
+                // Extract class access
+                const classes = this.findElements(ps, 'classAccesses');
+                for (const cls of classes) {
+                    const clsName = this.getText(cls.apexClass);
+                    if (clsName) {
+                        psData.classes.push({
+                            name: clsName,
+                            enabled: this.getText(cls.enabled) === 'true'
+                        });
+                    }
                 }
-            }
-            
-            // Extract object permissions
-            const objPerms = this.findElements(ps, 'objectPermissions');
-            for (const objPerm of objPerms) {
-                const objName = this.getText(objPerm.object);
-                if (objName) {
-                    psData.objectPermissions[objName] = {
-                        allowRead: this.getText(objPerm.allowRead) === 'true',
-                        allowCreate: this.getText(objPerm.allowCreate) === 'true',
-                        allowEdit: this.getText(objPerm.allowEdit) === 'true',
-                        allowDelete: this.getText(objPerm.allowDelete) === 'true',
-                    };
+
+                // Extract object permissions
+                const objPerms = this.findElements(ps, 'objectPermissions');
+                for (const objPerm of objPerms) {
+                    const objName = this.getText(objPerm.object);
+                    if (objName) {
+                        psData.objectPermissions[objName] = {
+                            allowRead: this.getText(objPerm.allowRead) === 'true',
+                            allowCreate: this.getText(objPerm.allowCreate) === 'true',
+                            allowEdit: this.getText(objPerm.allowEdit) === 'true',
+                            allowDelete: this.getText(objPerm.allowDelete) === 'true',
+                        };
+                    }
                 }
-            }
-            
-            // Extract custom permissions
-            const customPerms = this.findElements(ps, 'customPermissions');
-            for (const cp of customPerms) {
-                const cpName = this.getText(cp.name);
-                if (cpName && this.getText(cp.enabled) === 'true') {
-                    psData.customPermissions.push(cpName);
+
+                // Extract custom permissions
+                const customPerms = this.findElements(ps, 'customPermissions');
+                for (const cp of customPerms) {
+                    const cpName = this.getText(cp.name);
+                    if (cpName && this.getText(cp.enabled) === 'true') {
+                        psData.customPermissions.push(cpName);
+                    }
                 }
+
+                this.data.permissionSets[psName] = psData;
             }
-            
-            this.data.permissionSets[psName] = psData;
         }
     }
     
@@ -592,73 +728,68 @@ class SalesforceDocGenerator {
      * Analyze Apex Classes
      */
     async analyzeApexClasses() {
-        const classesDir = path.join(this.repoRoot, 'force-app', 'main', 'default', 'classes');
-        try {
-            await fs.access(classesDir);
-        } catch {
-            return;
-        }
-        
-        const clsFiles = await this.findFiles(classesDir, '*.cls');
-        for (const clsFile of clsFiles) {
-            const clsName = path.basename(clsFile, '.cls');
-            
-            let clsContent = '';
-            try {
-                clsContent = await fs.readFile(clsFile, 'utf-8');
-            } catch {
-                continue;
-            }
-            
-            // Read meta file
-            const metaFile = clsFile.replace('.cls', '.cls-meta.xml');
-            let apiVersion = 'Unknown';
-            try {
-                const metaRoot = await this.parseXML(metaFile);
-                if (metaRoot && metaRoot.ApexClass) {
-                    apiVersion = this.getText(metaRoot.ApexClass.apiVersion, 'Unknown');
+        for (const classesDir of await this.getMetadataDirs('classes')) {
+            const clsFiles = await this.findFiles(classesDir, '*.cls');
+            for (const clsFile of clsFiles) {
+                const clsName = path.basename(clsFile, '.cls');
+
+                let clsContent = '';
+                try {
+                    clsContent = await fs.readFile(clsFile, 'utf-8');
+                } catch {
+                    continue;
                 }
-            } catch {
-                // Meta file doesn't exist or can't be parsed
-            }
-            
-            const clsData = {
-                name: clsName,
-                file: path.relative(this.repoRoot, clsFile).replace(/\\/g, '/'),
-                metaFile: path.relative(this.repoRoot, metaFile).replace(/\\/g, '/'),
-                apiVersion: apiVersion,
-                isTest: clsName.includes('Test') || clsName.toLowerCase().includes('test'),
-                isWithoutSharing: /without\s+sharing/i.test(clsContent),
-                isWithSharing: /with\s+sharing/i.test(clsContent),
-                methods: [],
-                dependencies: [],
-                description: this.extractClassDescription(clsContent),
-            };
-            
-            // Extract method signatures
-            const methodPattern = /(public|private|protected|global)\s+(static\s+)?(\w+)\s+(\w+)\s*\(/g;
-            let match;
-            while ((match = methodPattern.exec(clsContent)) !== null) {
-                clsData.methods.push({
-                    visibility: match[1],
-                    isStatic: !!match[2],
-                    returnType: match[3],
-                    name: match[4],
-                });
-            }
-            
-            // Extract dependencies
-            const depPattern = /(\w+)\s*\.\s*\w+\s*\(/g;
-            const deps = new Set();
-            while ((match = depPattern.exec(clsContent)) !== null) {
-                const depName = match[1];
-                if (depName && depName[0] === depName[0].toUpperCase() && depName !== clsName) {
-                    deps.add(depName);
+
+                // Read meta file
+                const metaFile = clsFile.replace('.cls', '.cls-meta.xml');
+                let apiVersion = 'Unknown';
+                try {
+                    const metaRoot = await this.parseXML(metaFile);
+                    if (metaRoot && metaRoot.ApexClass) {
+                        apiVersion = this.getText(metaRoot.ApexClass.apiVersion, 'Unknown');
+                    }
+                } catch {
+                    // Meta file doesn't exist or can't be parsed
                 }
+
+                const clsData = {
+                    name: clsName,
+                    file: path.relative(this.repoRoot, clsFile).replace(/\\/g, '/'),
+                    metaFile: path.relative(this.repoRoot, metaFile).replace(/\\/g, '/'),
+                    apiVersion: apiVersion,
+                    isTest: clsName.includes('Test') || clsName.toLowerCase().includes('test'),
+                    isWithoutSharing: /without\s+sharing/i.test(clsContent),
+                    isWithSharing: /with\s+sharing/i.test(clsContent),
+                    methods: [],
+                    dependencies: [],
+                    description: this.extractClassDescription(clsContent),
+                };
+
+                // Extract method signatures
+                const methodPattern = /(public|private|protected|global)\s+(static\s+)?(\w+)\s+(\w+)\s*\(/g;
+                let match;
+                while ((match = methodPattern.exec(clsContent)) !== null) {
+                    clsData.methods.push({
+                        visibility: match[1],
+                        isStatic: !!match[2],
+                        returnType: match[3],
+                        name: match[4],
+                    });
+                }
+
+                // Extract dependencies
+                const depPattern = /(\w+)\s*\.\s*\w+\s*\(/g;
+                const deps = new Set();
+                while ((match = depPattern.exec(clsContent)) !== null) {
+                    const depName = match[1];
+                    if (depName && depName[0] === depName[0].toUpperCase() && depName !== clsName) {
+                        deps.add(depName);
+                    }
+                }
+                clsData.dependencies = Array.from(deps);
+
+                this.data.apexClasses[clsName] = clsData;
             }
-            clsData.dependencies = Array.from(deps);
-            
-            this.data.apexClasses[clsName] = clsData;
         }
     }
     
@@ -666,80 +797,75 @@ class SalesforceDocGenerator {
      * Analyze Triggers
      */
     async analyzeTriggers() {
-        const triggersDir = path.join(this.repoRoot, 'force-app', 'main', 'default', 'triggers');
-        try {
-            await fs.access(triggersDir);
-        } catch {
-            return;
-        }
-        
-        const triggerFiles = await this.findFiles(triggersDir, '*.trigger');
-        for (const triggerFile of triggerFiles) {
-            const triggerName = path.basename(triggerFile, '.trigger');
-            
-            let triggerContent = '';
-            try {
-                triggerContent = await fs.readFile(triggerFile, 'utf-8');
-            } catch {
-                continue;
-            }
-            
-            // Extract object name
-            let objName = null;
-            if (triggerName.includes('Trigger')) {
-                objName = triggerName.replace(/Trigger/gi, '');
-            }
-            
-            // Extract handler classes
-            const handlerPattern = /(\w+Handler)\.\w+/g;
-            const handlers = new Set();
-            let match;
-            while ((match = handlerPattern.exec(triggerContent)) !== null) {
-                handlers.add(match[1]);
-            }
-            
-            const triggerData = {
-                name: triggerName,
-                file: path.relative(this.repoRoot, triggerFile).replace(/\\/g, '/'),
-                object: objName,
-                handlers: Array.from(handlers),
-                events: [],
-                description: this.extractClassDescription(triggerContent),
-            };
-            
-            // Determine trigger events
-            const eventPatterns = {
-                'before insert': /before\s+insert/i,
-                'after insert': /after\s+insert/i,
-                'before update': /before\s+update/i,
-                'after update': /after\s+update/i,
-                'before delete': /before\s+delete/i,
-                'after delete': /after\s+delete/i,
-                'after undelete': /after\s+undelete/i,
-            };
-            
-            for (const [event, pattern] of Object.entries(eventPatterns)) {
-                if (pattern.test(triggerContent)) {
-                    triggerData.events.push(event);
+        for (const triggersDir of await this.getMetadataDirs('triggers')) {
+            const triggerFiles = await this.findFiles(triggersDir, '*.trigger');
+            for (const triggerFile of triggerFiles) {
+                const triggerName = path.basename(triggerFile, '.trigger');
+
+                let triggerContent = '';
+                try {
+                    triggerContent = await fs.readFile(triggerFile, 'utf-8');
+                } catch {
+                    continue;
                 }
+
+                // Extract object name
+                let objName = null;
+                if (triggerName.includes('Trigger')) {
+                    objName = triggerName.replace(/Trigger/gi, '');
+                }
+
+                // Extract handler classes
+                const handlerPattern = /(\w+Handler)\.\w+/g;
+                const handlers = new Set();
+                let match;
+                while ((match = handlerPattern.exec(triggerContent)) !== null) {
+                    handlers.add(match[1]);
+                }
+
+                const triggerData = {
+                    name: triggerName,
+                    file: path.relative(this.repoRoot, triggerFile).replace(/\\/g, '/'),
+                    object: objName,
+                    handlers: Array.from(handlers),
+                    events: [],
+                    description: this.extractClassDescription(triggerContent),
+                };
+
+                // Determine trigger events
+                const eventPatterns = {
+                    'before insert': /before\s+insert/i,
+                    'after insert': /after\s+insert/i,
+                    'before update': /before\s+update/i,
+                    'after update': /after\s+update/i,
+                    'before delete': /before\s+delete/i,
+                    'after delete': /after\s+delete/i,
+                    'after undelete': /after\s+undelete/i,
+                };
+
+                for (const [event, pattern] of Object.entries(eventPatterns)) {
+                    if (pattern.test(triggerContent)) {
+                        triggerData.events.push(event);
+                    }
+                }
+
+                if (objName) {
+                    if (!this.data.relationships.triggerToObjects[triggerName]) {
+                        this.data.relationships.triggerToObjects[triggerName] = [];
+                    }
+                    this.data.relationships.triggerToObjects[triggerName].push(objName);
+
+                    // Build reverse relationship: objectToTriggers
+                    if (!this.data.relationships.objectToTriggers[objName]) {
+                        this.data.relationships.objectToTriggers[objName] = [];
+                    }
+                    if (!this.data.relationships.objectToTriggers[objName].includes(triggerName)) {
+                        this.data.relationships.objectToTriggers[objName].push(triggerName);
+                    }
+                }
+
+                this.data.triggers[triggerName] = triggerData;
             }
-            
-            if (objName) {
-                if (!this.data.relationships.triggerToObjects[triggerName]) {
-                    this.data.relationships.triggerToObjects[triggerName] = [];
-                }
-                this.data.relationships.triggerToObjects[triggerName].push(objName);
-                
-                // Build reverse relationship: objectToTriggers
-                if (!this.data.relationships.objectToTriggers[objName]) {
-                    this.data.relationships.objectToTriggers[objName] = [];
-                }
-                if (!this.data.relationships.objectToTriggers[objName].includes(triggerName)) {
-                    this.data.relationships.objectToTriggers[objName].push(triggerName);
-                }
-            }
-            
-            this.data.triggers[triggerName] = triggerData;
         }
     }
     
@@ -747,92 +873,87 @@ class SalesforceDocGenerator {
      * Analyze LWC Components
      */
     async analyzeLWCComponents() {
-        const lwcDir = path.join(this.repoRoot, 'force-app', 'main', 'default', 'lwc');
-        try {
-            await fs.access(lwcDir);
-        } catch {
-            return;
-        }
-        
-        const entries = await fs.readdir(lwcDir, { withFileTypes: true });
-        for (const entry of entries) {
-            if (!entry.isDirectory()) continue;
-            
-            const componentName = entry.name;
-            const componentDir = path.join(lwcDir, componentName);
-            const jsFile = path.join(componentDir, `${componentName}.js`);
-            const htmlFile = path.join(componentDir, `${componentName}.html`);
-            const metaFile = path.join(componentDir, `${componentName}.js-meta.xml`);
-            
-            const lwcData = {
-                name: componentName,
-                folder: path.relative(this.repoRoot, componentDir).replace(/\\/g, '/'),
-                hasJS: false,
-                hasHTML: false,
-                targets: [],
-                isExposed: false,
-                apiVersion: 'Unknown',
-                apexMethods: [],
-                description: '',
-            };
-            
-            // Check if files exist
-            try {
-                await fs.access(jsFile);
-                lwcData.hasJS = true;
-            } catch {}
-            
-            try {
-                await fs.access(htmlFile);
-                lwcData.hasHTML = true;
-            } catch {}
-            
-            // Parse meta file
-            try {
-                const metaRoot = await this.parseXML(metaFile);
-                if (metaRoot && metaRoot.LightningComponentBundle) {
-                    const meta = metaRoot.LightningComponentBundle;
-                    lwcData.isExposed = this.getText(meta.isExposed) === 'true';
-                    lwcData.apiVersion = this.getText(meta.apiVersion, 'Unknown');
-                    
-                    const targets = this.findElements(meta, 'targets');
-                    for (const target of targets) {
-                        const targetText = this.getText(target);
-                        if (targetText) lwcData.targets.push(targetText);
-                    }
-                }
-            } catch {
-                // Meta file doesn't exist or can't be parsed
-            }
-            
-            // Parse JS file for Apex method calls
-            if (lwcData.hasJS) {
+        for (const lwcDir of await this.getMetadataDirs('lwc')) {
+            const entries = await fs.readdir(lwcDir, { withFileTypes: true });
+            for (const entry of entries) {
+                if (!entry.isDirectory()) continue;
+
+                const componentName = entry.name;
+                const componentDir = path.join(lwcDir, componentName);
+                const jsFile = path.join(componentDir, `${componentName}.js`);
+                const htmlFile = path.join(componentDir, `${componentName}.html`);
+                const metaFile = path.join(componentDir, `${componentName}.js-meta.xml`);
+
+                const lwcData = {
+                    name: componentName,
+                    folder: path.relative(this.repoRoot, componentDir).replace(/\\/g, '/'),
+                    hasJS: false,
+                    hasHTML: false,
+                    targets: [],
+                    isExposed: false,
+                    apiVersion: 'Unknown',
+                    apexMethods: [],
+                    description: '',
+                };
+
+                // Check if files exist
                 try {
-                    const jsContent = await fs.readFile(jsFile, 'utf-8');
-                    
-                    // Extract @wire and imperative Apex calls
-                    const wirePattern = /@wire\s*\(\s*(\w+)\s*/g;
-                    const apexPattern = /(\w+)\s*\(\s*\{/g;
-                    const apexMethods = new Set();
-                    
-                    while ((match = wirePattern.exec(jsContent)) !== null) {
-                        apexMethods.add(match[1]);
-                    }
-                    
-                    while ((match = apexPattern.exec(jsContent)) !== null) {
-                        const method = match[1];
-                        if (method && method[0] === method[0].toUpperCase()) {
-                            apexMethods.add(method);
+                    await fs.access(jsFile);
+                    lwcData.hasJS = true;
+                } catch {}
+
+                try {
+                    await fs.access(htmlFile);
+                    lwcData.hasHTML = true;
+                } catch {}
+
+                // Parse meta file
+                try {
+                    const metaRoot = await this.parseXML(metaFile);
+                    if (metaRoot && metaRoot.LightningComponentBundle) {
+                        const meta = metaRoot.LightningComponentBundle;
+                        lwcData.isExposed = this.getText(meta.isExposed) === 'true';
+                        lwcData.apiVersion = this.getText(meta.apiVersion, 'Unknown');
+
+                        const targets = this.findElements(meta, 'targets');
+                        for (const target of targets) {
+                            const targetText = this.getText(target);
+                            if (targetText) lwcData.targets.push(targetText);
                         }
                     }
-                    
-                    lwcData.apexMethods = Array.from(apexMethods);
                 } catch {
-                    // Can't read JS file
+                    // Meta file doesn't exist or can't be parsed
                 }
+
+                // Parse JS file for Apex method calls
+                if (lwcData.hasJS) {
+                    try {
+                        const jsContent = await fs.readFile(jsFile, 'utf-8');
+
+                        // Extract @wire and imperative Apex calls
+                        const wirePattern = /@wire\s*\(\s*(\w+)\s*/g;
+                        const apexPattern = /(\w+)\s*\(\s*\{/g;
+                        const apexMethods = new Set();
+
+                        while ((match = wirePattern.exec(jsContent)) !== null) {
+                            apexMethods.add(match[1]);
+                        }
+
+                        while ((match = apexPattern.exec(jsContent)) !== null) {
+                            const method = match[1];
+                            if (method && method[0] === method[0].toUpperCase()) {
+                                apexMethods.add(method);
+                            }
+                        }
+
+                        lwcData.apexMethods = Array.from(apexMethods);
+                    } catch {
+                        // Can't read JS file
+                    }
+                }
+
+                this.data.lwcComponents[componentName] = lwcData;
             }
-            
-            this.data.lwcComponents[componentName] = lwcData;
         }
     }
     
@@ -840,18 +961,9 @@ class SalesforceDocGenerator {
      * Analyze FlexiPages
      */
     async analyzeFlexiPages() {
-        const flexipageDirs = [
-            path.join(this.repoRoot, 'force-app', 'main', 'env-dependent', 'flexipages'),
-            path.join(this.repoRoot, 'force-app', 'main', 'default', 'flexipages')
-        ];
-        
+        const flexipageDirs = await this.getMetadataDirs('flexipages');
+
         for (const flexipageDir of flexipageDirs) {
-            try {
-                await fs.access(flexipageDir);
-            } catch {
-                continue;
-            }
-            
             const files = await this.findFiles(flexipageDir, '*.flexipage-meta.xml');
             for (const filePath of files) {
                 const root = await this.parseXML(filePath);
@@ -934,14 +1046,13 @@ class SalesforceDocGenerator {
      * Analyze Flows
      */
     async analyzeFlows() {
-        const flowsDir = path.join(this.repoRoot, 'force-app', 'main', 'default', 'flows');
-        try {
-            await fs.access(flowsDir);
-        } catch {
-            console.log(`    Flows directory not found: ${flowsDir}`);
+        const flowsDirs = await this.getMetadataDirs('flows');
+        if (flowsDirs.length === 0) {
+            console.log('    Flows directory not found, skipping');
             return;
         }
-        
+
+        for (const flowsDir of flowsDirs) {
         const files = await this.findFiles(flowsDir, '*.flow-meta.xml');
         for (const filePath of files) {
             const root = await this.parseXML(filePath);
@@ -1206,127 +1317,123 @@ class SalesforceDocGenerator {
             
             this.data.flows[flowName] = flowData;
         }
+        } // end for flowsDir
     }
     
     /**
      * Analyze Objects
      */
     async analyzeObjects() {
-        const objectsDir = path.join(this.repoRoot, 'force-app', 'main', 'default', 'objects');
-        try {
-            await fs.access(objectsDir);
-        } catch {
-            return;
-        }
-        
-        const entries = await fs.readdir(objectsDir, { withFileTypes: true });
-        for (const entry of entries) {
-            if (!entry.isDirectory()) continue;
-            
-            const objName = entry.name;
-            const objDir = path.join(objectsDir, objName);
-            const objFile = path.join(objDir, `${objName}.object-meta.xml`);
-            
-            try {
-                await fs.access(objFile);
-            } catch {
-                continue;
-            }
-            
-            const root = await this.parseXML(objFile);
-            if (!root || !root.CustomObject) continue;
-            
-            const obj = root.CustomObject;
-            const objData = {
-                name: objName,
-                label: this.getText(obj.label, objName),
-                pluralLabel: this.getText(obj.pluralLabel, objName),
-                description: this.getText(obj.description, ''),
-                sharingModel: this.getText(obj.sharingModel, 'Private'),
-                fields: [],
-                relationships: [],
-            };
-            
-            // Analyze fields
-            const fieldsDir = path.join(objDir, 'fields');
-            try {
-                await fs.access(fieldsDir);
-                const fieldFiles = await this.findFiles(fieldsDir, '*.field-meta.xml');
-                
-                for (const fieldFile of fieldFiles) {
-                    const fieldRoot = await this.parseXML(fieldFile);
-                    if (!fieldRoot || !fieldRoot.CustomField) continue;
-                    
-                    const field = fieldRoot.CustomField;
-                    const fieldName = this.getText(field.fullName);
-                    if (!fieldName) continue;
-                    
-                    const fieldData = {
-                        name: fieldName,
-                        label: this.getText(field.label, fieldName),
-                        type: this.getText(field.type, 'Unknown'),
-                        description: this.getText(field.description, ''),
-                    };
-                    
-                    // Check for relationships
-                    const fieldType = this.getText(field.type);
-                    if (fieldType === 'Lookup' || fieldType === 'MasterDetail') {
-                        const refTo = this.findElements(field, 'referenceTo')[0];
-                        if (refTo) {
-                            const refName = this.getText(refTo);
-                            if (refName) {
-                                fieldData.referenceTo = refName;
-                                objData.relationships.push({
-                                    field: fieldName,
-                                    type: fieldType,
-                                    relatedObject: refName
-                                });
+        for (const objectsDir of await this.getMetadataDirs('objects')) {
+            const entries = await fs.readdir(objectsDir, { withFileTypes: true });
+            for (const entry of entries) {
+                if (!entry.isDirectory()) continue;
+
+                const objName = entry.name;
+                const objDir = path.join(objectsDir, objName);
+                const objFile = path.join(objDir, `${objName}.object-meta.xml`);
+
+                try {
+                    await fs.access(objFile);
+                } catch {
+                    continue;
+                }
+
+                const root = await this.parseXML(objFile);
+                if (!root || !root.CustomObject) continue;
+
+                const obj = root.CustomObject;
+                const objData = {
+                    name: objName,
+                    label: this.getText(obj.label, objName),
+                    pluralLabel: this.getText(obj.pluralLabel, objName),
+                    description: this.getText(obj.description, ''),
+                    sharingModel: this.getText(obj.sharingModel, 'Private'),
+                    fields: [],
+                    relationships: [],
+                };
+
+                // Analyze fields
+                const fieldsDir = path.join(objDir, 'fields');
+                try {
+                    await fs.access(fieldsDir);
+                    const fieldFiles = await this.findFiles(fieldsDir, '*.field-meta.xml');
+
+                    for (const fieldFile of fieldFiles) {
+                        const fieldRoot = await this.parseXML(fieldFile);
+                        if (!fieldRoot || !fieldRoot.CustomField) continue;
+
+                        const field = fieldRoot.CustomField;
+                        const fieldName = this.getText(field.fullName);
+                        if (!fieldName) continue;
+
+                        const fieldData = {
+                            name: fieldName,
+                            label: this.getText(field.label, fieldName),
+                            type: this.getText(field.type, 'Unknown'),
+                            description: this.getText(field.description, ''),
+                        };
+
+                        // Check for relationships
+                        const fieldType = this.getText(field.type);
+                        if (fieldType === 'Lookup' || fieldType === 'MasterDetail') {
+                            const refTo = this.findElements(field, 'referenceTo')[0];
+                            if (refTo) {
+                                const refName = this.getText(refTo);
+                                if (refName) {
+                                    fieldData.referenceTo = refName;
+                                    objData.relationships.push({
+                                        field: fieldName,
+                                        type: fieldType,
+                                        relatedObject: refName
+                                    });
+                                }
                             }
                         }
+
+                        objData.fields.push(fieldData);
                     }
-                    
-                    objData.fields.push(fieldData);
+                } catch {
+                    // Fields directory doesn't exist
                 }
-            } catch {
-                // Fields directory doesn't exist
-            }
-            
-            // Analyze validation rules for this object
-            const validationRulesDir = path.join(objDir, 'validationRules');
-            try {
-                await fs.access(validationRulesDir);
-                const vrFiles = await this.findFiles(validationRulesDir, '*.validationRule-meta.xml');
-                
-                for (const vrFile of vrFiles) {
-                    const vrRoot = await this.parseXML(vrFile);
-                    if (!vrRoot || !vrRoot.ValidationRule) continue;
-                    
-                    const vr = vrRoot.ValidationRule;
-                    const vrName = this.getText(vr.fullName);
-                    if (!vrName) continue;
-                    
-                    const vrData = {
-                        name: vrName,
-                        object: objName,
-                        active: this.getText(vr.active) === 'true',
-                        description: this.getText(vr.description, ''),
-                        errorConditionFormula: this.getText(vr.errorConditionFormula, ''),
-                        errorMessage: this.getText(vr.errorMessage, ''),
-                        file: path.relative(this.repoRoot, vrFile).replace(/\\/g, '/'),
-                    };
-                    
-                    if (!this.data.validationRules[objName]) {
-                        this.data.validationRules[objName] = [];
+
+                // Analyze validation rules for this object
+                const validationRulesDir = path.join(objDir, 'validationRules');
+                try {
+                    await fs.access(validationRulesDir);
+                    const vrFiles = await this.findFiles(validationRulesDir, '*.validationRule-meta.xml');
+
+                    for (const vrFile of vrFiles) {
+                        const vrRoot = await this.parseXML(vrFile);
+                        if (!vrRoot || !vrRoot.ValidationRule) continue;
+
+                        const vr = vrRoot.ValidationRule;
+                        const vrName = this.getText(vr.fullName);
+                        if (!vrName) continue;
+
+                        const vrData = {
+                            name: vrName,
+                            object: objName,
+                            active: this.getText(vr.active) === 'true',
+                            description: this.getText(vr.description, ''),
+                            errorConditionFormula: this.getText(vr.errorConditionFormula, ''),
+                            errorMessage: this.getText(vr.errorMessage, ''),
+                            file: path.relative(this.repoRoot, vrFile).replace(/\\/g, '/'),
+                        };
+
+                        if (!this.data.validationRules[objName]) {
+                            this.data.validationRules[objName] = [];
+                        }
+                        this.data.validationRules[objName].push(vrData);
                     }
-                    this.data.validationRules[objName].push(vrData);
+                } catch {
+                    // Validation rules directory doesn't exist
                 }
-            } catch {
-                // Validation rules directory doesn't exist
+
+                this.data.objects[objName] = objData;
             }
-            
-            this.data.objects[objName] = objData;
         }
-        
+
         // Analyze record types from releases folder
         await this.analyzeRecordTypes();
     }
@@ -1437,268 +1544,238 @@ class SalesforceDocGenerator {
      * Analyze Approval Processes
      */
     async analyzeApprovalProcesses() {
-        const approvalDir = path.join(this.repoRoot, 'force-app', 'main', 'default', 'approvalProcesses');
-        try {
-            await fs.access(approvalDir);
-        } catch {
-            return;
-        }
-        
-        const entries = await fs.readdir(approvalDir, { withFileTypes: true });
-        for (const entry of entries) {
-            if (!entry.isDirectory()) continue;
-            
-            const processName = entry.name;
-            const processDir = path.join(approvalDir, processName);
-            const processFile = path.join(processDir, `${processName}.approvalProcess-meta.xml`);
-            
-            try {
-                await fs.access(processFile);
-            } catch {
-                continue;
+        for (const approvalDir of await this.getMetadataDirs('approvalProcesses')) {
+            const entries = await fs.readdir(approvalDir, { withFileTypes: true });
+            for (const entry of entries) {
+                if (!entry.isDirectory()) continue;
+
+                const processName = entry.name;
+                const processDir = path.join(approvalDir, processName);
+                const processFile = path.join(processDir, `${processName}.approvalProcess-meta.xml`);
+
+                try {
+                    await fs.access(processFile);
+                } catch {
+                    continue;
+                }
+
+                const root = await this.parseXML(processFile);
+                if (!root || !root.ApprovalProcess) continue;
+
+                const process = root.ApprovalProcess;
+                const processData = {
+                    name: processName,
+                    label: this.getText(process.label, processName),
+                    description: this.getText(process.description, ''),
+                    object: this.getText(process.object),
+                    active: this.getText(process.active) === 'true',
+                    allowRecall: this.getText(process.allowRecall) === 'true',
+                    file: path.relative(this.repoRoot, processFile).replace(/\\/g, '/'),
+                };
+
+                this.data.approvalProcesses[processName] = processData;
             }
-            
-            const root = await this.parseXML(processFile);
-            if (!root || !root.ApprovalProcess) continue;
-            
-            const process = root.ApprovalProcess;
-            const processData = {
-                name: processName,
-                label: this.getText(process.label, processName),
-                description: this.getText(process.description, ''),
-                object: this.getText(process.object),
-                active: this.getText(process.active) === 'true',
-                allowRecall: this.getText(process.allowRecall) === 'true',
-                file: path.relative(this.repoRoot, processFile).replace(/\\/g, '/'),
-            };
-            
-            this.data.approvalProcesses[processName] = processData;
         }
     }
-    
+
     /**
      * Analyze Assignment Rules
      */
     async analyzeAssignmentRules() {
-        const assignmentDir = path.join(this.repoRoot, 'force-app', 'main', 'default', 'assignmentRules');
-        try {
-            await fs.access(assignmentDir);
-        } catch {
-            return;
-        }
-        
-        const entries = await fs.readdir(assignmentDir, { withFileTypes: true });
-        for (const entry of entries) {
-            if (!entry.isDirectory()) continue;
-            
-            const ruleName = entry.name;
-            const ruleDir = path.join(assignmentDir, ruleName);
-            const ruleFile = path.join(ruleDir, `${ruleName}.assignmentRules-meta.xml`);
-            
-            try {
-                await fs.access(ruleFile);
-            } catch {
-                continue;
+        for (const assignmentDir of await this.getMetadataDirs('assignmentRules')) {
+            const entries = await fs.readdir(assignmentDir, { withFileTypes: true });
+            for (const entry of entries) {
+                if (!entry.isDirectory()) continue;
+
+                const ruleName = entry.name;
+                const ruleDir = path.join(assignmentDir, ruleName);
+                const ruleFile = path.join(ruleDir, `${ruleName}.assignmentRules-meta.xml`);
+
+                try {
+                    await fs.access(ruleFile);
+                } catch {
+                    continue;
+                }
+
+                const root = await this.parseXML(ruleFile);
+                if (!root || !root.AssignmentRules) continue;
+
+                const rules = root.AssignmentRules;
+                const ruleData = {
+                    name: ruleName,
+                    active: this.getText(rules.active) === 'true',
+                    file: path.relative(this.repoRoot, ruleFile).replace(/\\/g, '/'),
+                    rules: [],
+                };
+
+                const ruleEntries = this.findElements(rules, 'assignmentRule');
+                for (const rule of ruleEntries) {
+                    ruleData.rules.push({
+                        name: this.getText(rule.fullName),
+                        label: this.getText(rule.label),
+                        active: this.getText(rule.active) === 'true',
+                    });
+                }
+
+                this.data.assignmentRules[ruleName] = ruleData;
             }
-            
-            const root = await this.parseXML(ruleFile);
-            if (!root || !root.AssignmentRules) continue;
-            
-            const rules = root.AssignmentRules;
-            const ruleData = {
-                name: ruleName,
-                active: this.getText(rules.active) === 'true',
-                file: path.relative(this.repoRoot, ruleFile).replace(/\\/g, '/'),
-                rules: [],
-            };
-            
-            const ruleEntries = this.findElements(rules, 'assignmentRule');
-            for (const rule of ruleEntries) {
-                ruleData.rules.push({
-                    name: this.getText(rule.fullName),
-                    label: this.getText(rule.label),
-                    active: this.getText(rule.active) === 'true',
-                });
-            }
-            
-            this.data.assignmentRules[ruleName] = ruleData;
         }
     }
-    
+
     /**
      * Analyze AutoResponse Rules
      */
     async analyzeAutoResponseRules() {
-        const autoResponseDir = path.join(this.repoRoot, 'force-app', 'main', 'default', 'autoResponseRules');
-        try {
-            await fs.access(autoResponseDir);
-        } catch {
-            return;
-        }
-        
-        const entries = await fs.readdir(autoResponseDir, { withFileTypes: true });
-        for (const entry of entries) {
-            if (!entry.isDirectory()) continue;
-            
-            const ruleName = entry.name;
-            const ruleDir = path.join(autoResponseDir, ruleName);
-            const ruleFile = path.join(ruleDir, `${ruleName}.autoResponseRules-meta.xml`);
-            
-            try {
-                await fs.access(ruleFile);
-            } catch {
-                continue;
+        for (const autoResponseDir of await this.getMetadataDirs('autoResponseRules')) {
+            const entries = await fs.readdir(autoResponseDir, { withFileTypes: true });
+            for (const entry of entries) {
+                if (!entry.isDirectory()) continue;
+
+                const ruleName = entry.name;
+                const ruleDir = path.join(autoResponseDir, ruleName);
+                const ruleFile = path.join(ruleDir, `${ruleName}.autoResponseRules-meta.xml`);
+
+                try {
+                    await fs.access(ruleFile);
+                } catch {
+                    continue;
+                }
+
+                const root = await this.parseXML(ruleFile);
+                if (!root || !root.AutoResponseRules) continue;
+
+                const rules = root.AutoResponseRules;
+                const ruleData = {
+                    name: ruleName,
+                    active: this.getText(rules.active) === 'true',
+                    file: path.relative(this.repoRoot, ruleFile).replace(/\\/g, '/'),
+                    rules: [],
+                };
+
+                const ruleEntries = this.findElements(rules, 'autoResponseRule');
+                for (const rule of ruleEntries) {
+                    ruleData.rules.push({
+                        name: this.getText(rule.fullName),
+                        active: this.getText(rule.active) === 'true',
+                    });
+                }
+
+                this.data.autoResponseRules[ruleName] = ruleData;
             }
-            
-            const root = await this.parseXML(ruleFile);
-            if (!root || !root.AutoResponseRules) continue;
-            
-            const rules = root.AutoResponseRules;
-            const ruleData = {
-                name: ruleName,
-                active: this.getText(rules.active) === 'true',
-                file: path.relative(this.repoRoot, ruleFile).replace(/\\/g, '/'),
-                rules: [],
-            };
-            
-            const ruleEntries = this.findElements(rules, 'autoResponseRule');
-            for (const rule of ruleEntries) {
-                ruleData.rules.push({
-                    name: this.getText(rule.fullName),
-                    active: this.getText(rule.active) === 'true',
-                });
-            }
-            
-            this.data.autoResponseRules[ruleName] = ruleData;
         }
     }
-    
+
     /**
      * Analyze Escalation Rules
      */
     async analyzeEscalationRules() {
-        const escalationDir = path.join(this.repoRoot, 'force-app', 'main', 'default', 'escalationRules');
-        try {
-            await fs.access(escalationDir);
-        } catch {
-            return;
-        }
-        
-        const entries = await fs.readdir(escalationDir, { withFileTypes: true });
-        for (const entry of entries) {
-            if (!entry.isDirectory()) continue;
-            
-            const ruleName = entry.name;
-            const ruleDir = path.join(escalationDir, ruleName);
-            const ruleFile = path.join(ruleDir, `${ruleName}.escalationRules-meta.xml`);
-            
-            try {
-                await fs.access(ruleFile);
-            } catch {
-                continue;
+        for (const escalationDir of await this.getMetadataDirs('escalationRules')) {
+            const entries = await fs.readdir(escalationDir, { withFileTypes: true });
+            for (const entry of entries) {
+                if (!entry.isDirectory()) continue;
+
+                const ruleName = entry.name;
+                const ruleDir = path.join(escalationDir, ruleName);
+                const ruleFile = path.join(ruleDir, `${ruleName}.escalationRules-meta.xml`);
+
+                try {
+                    await fs.access(ruleFile);
+                } catch {
+                    continue;
+                }
+
+                const root = await this.parseXML(ruleFile);
+                if (!root || !root.EscalationRules) continue;
+
+                const rules = root.EscalationRules;
+                const ruleData = {
+                    name: ruleName,
+                    active: this.getText(rules.active) === 'true',
+                    file: path.relative(this.repoRoot, ruleFile).replace(/\\/g, '/'),
+                    rules: [],
+                };
+
+                const ruleEntries = this.findElements(rules, 'escalationRule');
+                for (const rule of ruleEntries) {
+                    ruleData.rules.push({
+                        name: this.getText(rule.fullName),
+                        active: this.getText(rule.active) === 'true',
+                    });
+                }
+
+                this.data.escalationRules[ruleName] = ruleData;
             }
-            
-            const root = await this.parseXML(ruleFile);
-            if (!root || !root.EscalationRules) continue;
-            
-            const rules = root.EscalationRules;
-            const ruleData = {
-                name: ruleName,
-                active: this.getText(rules.active) === 'true',
-                file: path.relative(this.repoRoot, ruleFile).replace(/\\/g, '/'),
-                rules: [],
-            };
-            
-            const ruleEntries = this.findElements(rules, 'escalationRule');
-            for (const rule of ruleEntries) {
-                ruleData.rules.push({
-                    name: this.getText(rule.fullName),
-                    active: this.getText(rule.active) === 'true',
-                });
-            }
-            
-            this.data.escalationRules[ruleName] = ruleData;
         }
     }
-    
+
     /**
      * Analyze Permission Set Groups
      */
     async analyzePermissionSetGroups() {
-        const psgDir = path.join(this.repoRoot, 'force-app', 'main', 'default', 'permissionsetgroups');
-        try {
-            await fs.access(psgDir);
-        } catch {
-            return;
-        }
-        
-        const files = await this.findFiles(psgDir, '*.permissionsetgroup-meta.xml');
-        for (const filePath of files) {
-            const root = await this.parseXML(filePath);
-            if (!root || !root.PermissionSetGroup) continue;
-            
-            const psg = root.PermissionSetGroup;
-            const psgName = this.getText(psg.developerName) || this.getText(psg.masterLabel);
-            if (!psgName) continue;
-            
-            const psgData = {
-                name: psgName,
-                label: this.getText(psg.masterLabel, psgName),
-                description: this.getText(psg.description, ''),
-                file: path.relative(this.repoRoot, filePath).replace(/\\/g, '/'),
-                permissionSets: [],
-            };
-            
-            // Extract permission sets in the group
-            const psRefs = this.findElements(psg, 'permissionSets');
-            for (const psRef of psRefs) {
-                const psName = this.getText(psRef);
-                if (psName) {
-                    psgData.permissionSets.push(psName);
+        for (const psgDir of await this.getMetadataDirs('permissionsetgroups')) {
+            const files = await this.findFiles(psgDir, '*.permissionsetgroup-meta.xml');
+            for (const filePath of files) {
+                const root = await this.parseXML(filePath);
+                if (!root || !root.PermissionSetGroup) continue;
+
+                const psg = root.PermissionSetGroup;
+                const psgName = this.getText(psg.developerName) || this.getText(psg.masterLabel);
+                if (!psgName) continue;
+
+                const psgData = {
+                    name: psgName,
+                    label: this.getText(psg.masterLabel, psgName),
+                    description: this.getText(psg.description, ''),
+                    file: path.relative(this.repoRoot, filePath).replace(/\\/g, '/'),
+                    permissionSets: [],
+                };
+
+                // Extract permission sets in the group
+                const psRefs = this.findElements(psg, 'permissionSets');
+                for (const psRef of psRefs) {
+                    const psName = this.getText(psRef);
+                    if (psName) {
+                        psgData.permissionSets.push(psName);
+                    }
                 }
+
+                this.data.permissionSetGroups[psgName] = psgData;
             }
-            
-            this.data.permissionSetGroups[psgName] = psgData;
         }
     }
-    
+
     /**
      * Analyze Packages
      */
     async analyzePackages() {
-        const packagesDir = path.join(this.repoRoot, 'force-app', 'main', 'default', 'installedPackages');
-        try {
-            await fs.access(packagesDir);
-        } catch {
-            return;
-        }
-        
-        const entries = await fs.readdir(packagesDir, { withFileTypes: true });
-        for (const entry of entries) {
-            if (!entry.isDirectory()) continue;
-            
-            const packageName = entry.name;
-            const packageDir = path.join(packagesDir, packageName);
-            const packageFile = path.join(packageDir, `${packageName}.installedPackage-meta.xml`);
-            
-            try {
-                await fs.access(packageFile);
-            } catch {
-                continue;
+        for (const packagesDir of await this.getMetadataDirs('installedPackages')) {
+            const entries = await fs.readdir(packagesDir, { withFileTypes: true });
+            for (const entry of entries) {
+                if (!entry.isDirectory()) continue;
+
+                const packageName = entry.name;
+                const packageDir = path.join(packagesDir, packageName);
+                const packageFile = path.join(packageDir, `${packageName}.installedPackage-meta.xml`);
+
+                try {
+                    await fs.access(packageFile);
+                } catch {
+                    continue;
+                }
+
+                const root = await this.parseXML(packageFile);
+                if (!root || !root.InstalledPackage) continue;
+
+                const pkg = root.InstalledPackage;
+                const packageData = {
+                    name: packageName,
+                    versionNumber: this.getText(pkg.versionNumber),
+                    activateRSS: this.getText(pkg.activateRSS) === 'true',
+                    file: path.relative(this.repoRoot, packageFile).replace(/\\/g, '/'),
+                };
+
+                this.data.packages[packageName] = packageData;
             }
-            
-            const root = await this.parseXML(packageFile);
-            if (!root || !root.InstalledPackage) continue;
-            
-            const pkg = root.InstalledPackage;
-            const packageData = {
-                name: packageName,
-                versionNumber: this.getText(pkg.versionNumber),
-                activateRSS: this.getText(pkg.activateRSS) === 'true',
-                file: path.relative(this.repoRoot, packageFile).replace(/\\/g, '/'),
-            };
-            
-            this.data.packages[packageName] = packageData;
         }
     }
 
@@ -1706,54 +1783,49 @@ class SalesforceDocGenerator {
      * Analyze Aura Components
      */
     async analyzeAuraComponents() {
-        const auraDir = path.join(this.repoRoot, 'force-app', 'main', 'default', 'aura');
-        try {
-            await fs.access(auraDir);
-        } catch {
-            return;
-        }
+        for (const auraDir of await this.getMetadataDirs('aura')) {
+            const entries = await fs.readdir(auraDir, { withFileTypes: true });
+            for (const entry of entries) {
+                if (!entry.isDirectory()) continue;
+                const compName = entry.name;
+                const compDir = path.join(auraDir, compName);
+                const metaFile = path.join(compDir, `${compName}.cmp-meta.xml`);
+                const cmpFile = path.join(compDir, `${compName}.cmp`);
+                const jsFile = path.join(compDir, `${compName}Controller.js`);
+                const helperFile = path.join(compDir, `${compName}Helper.js`);
 
-        const entries = await fs.readdir(auraDir, { withFileTypes: true });
-        for (const entry of entries) {
-            if (!entry.isDirectory()) continue;
-            const compName = entry.name;
-            const compDir = path.join(auraDir, compName);
-            const metaFile = path.join(compDir, `${compName}.cmp-meta.xml`);
-            const cmpFile = path.join(compDir, `${compName}.cmp`);
-            const jsFile = path.join(compDir, `${compName}Controller.js`);
-            const helperFile = path.join(compDir, `${compName}Helper.js`);
+                let apiVersion = '';
+                let description = '';
+                let extendsComponent = '';
 
-            let apiVersion = '';
-            let description = '';
-            let extendsComponent = '';
+                try {
+                    await fs.access(metaFile);
+                    const root = await this.parseXML(metaFile);
+                    if (root && root.AuraDefinitionBundle) {
+                        apiVersion = this.getText(root.AuraDefinitionBundle.apiVersion);
+                        description = this.getText(root.AuraDefinitionBundle.description);
+                    }
+                } catch { /* no meta file */ }
 
-            try {
-                await fs.access(metaFile);
-                const root = await this.parseXML(metaFile);
-                if (root && root.AuraDefinitionBundle) {
-                    apiVersion = this.getText(root.AuraDefinitionBundle.apiVersion);
-                    description = this.getText(root.AuraDefinitionBundle.description);
-                }
-            } catch { /* no meta file */ }
+                try {
+                    await fs.access(cmpFile);
+                    const cmpContent = await fs.readFile(cmpFile, 'utf-8');
+                    const extendsMatch = cmpContent.match(/extends="([^"]+)"/);
+                    if (extendsMatch) extendsComponent = extendsMatch[1];
+                } catch { /* no cmp file */ }
 
-            try {
-                await fs.access(cmpFile);
-                const cmpContent = await fs.readFile(cmpFile, 'utf-8');
-                const extendsMatch = cmpContent.match(/extends="([^"]+)"/);
-                if (extendsMatch) extendsComponent = extendsMatch[1];
-            } catch { /* no cmp file */ }
+                const hasController = await fs.access(jsFile).then(() => true).catch(() => false);
+                const hasHelper = await fs.access(helperFile).then(() => true).catch(() => false);
 
-            const hasController = await fs.access(jsFile).then(() => true).catch(() => false);
-            const hasHelper = await fs.access(helperFile).then(() => true).catch(() => false);
-
-            this.data.auraComponents[compName] = {
-                name: compName,
-                apiVersion,
-                description,
-                extendsComponent,
-                hasController,
-                hasHelper,
-            };
+                this.data.auraComponents[compName] = {
+                    name: compName,
+                    apiVersion,
+                    description,
+                    extendsComponent,
+                    hasController,
+                    hasHelper,
+                };
+            }
         }
     }
 
@@ -1761,40 +1833,35 @@ class SalesforceDocGenerator {
      * Analyze Custom Metadata records
      */
     async analyzeCustomMetadata() {
-        const cmDir = path.join(this.repoRoot, 'force-app', 'main', 'default', 'customMetadata');
-        try {
-            await fs.access(cmDir);
-        } catch {
-            return;
-        }
+        for (const cmDir of await this.getMetadataDirs('customMetadata')) {
+            const entries = await fs.readdir(cmDir, { withFileTypes: true });
+            for (const entry of entries) {
+                if (!entry.isFile() || !entry.name.endsWith('.md-meta.xml')) continue;
+                const baseName = entry.name.replace('.md-meta.xml', '');
+                const parts = baseName.split('.');
+                if (parts.length < 2) continue;
+                const typeName = parts[0];
+                const recordName = parts.slice(1).join('.');
 
-        const entries = await fs.readdir(cmDir, { withFileTypes: true });
-        for (const entry of entries) {
-            if (!entry.isFile() || !entry.name.endsWith('.md-meta.xml')) continue;
-            const baseName = entry.name.replace('.md-meta.xml', '');
-            const parts = baseName.split('.');
-            if (parts.length < 2) continue;
-            const typeName = parts[0];
-            const recordName = parts.slice(1).join('.');
+                const filePath = path.join(cmDir, entry.name);
+                const root = await this.parseXML(filePath);
+                if (!root || !root.CustomMetadata) continue;
 
-            const filePath = path.join(cmDir, entry.name);
-            const root = await this.parseXML(filePath);
-            if (!root || !root.CustomMetadata) continue;
+                const cm = root.CustomMetadata;
+                const label = this.getText(cm.label);
+                const isProtected = this.getText(cm.protected) === 'true';
+                const valuesRaw = cm.values;
+                const valuesArr = Array.isArray(valuesRaw) ? valuesRaw : valuesRaw ? [valuesRaw] : [];
+                const values = valuesArr.map(v => ({
+                    field: this.getText(v.field),
+                    value: v.value !== undefined ? this.getText(v.value) : '',
+                }));
 
-            const cm = root.CustomMetadata;
-            const label = this.getText(cm.label);
-            const isProtected = this.getText(cm.protected) === 'true';
-            const valuesRaw = cm.values;
-            const valuesArr = Array.isArray(valuesRaw) ? valuesRaw : valuesRaw ? [valuesRaw] : [];
-            const values = valuesArr.map(v => ({
-                field: this.getText(v.field),
-                value: v.value !== undefined ? this.getText(v.value) : '',
-            }));
-
-            if (!this.data.customMetadata[typeName]) {
-                this.data.customMetadata[typeName] = {};
+                if (!this.data.customMetadata[typeName]) {
+                    this.data.customMetadata[typeName] = {};
+                }
+                this.data.customMetadata[typeName][recordName] = { label, protected: isProtected, values };
             }
-            this.data.customMetadata[typeName][recordName] = { label, protected: isProtected, values };
         }
     }
 
@@ -1802,48 +1869,43 @@ class SalesforceDocGenerator {
      * Analyze Layouts
      */
     async analyzeLayouts() {
-        const layoutsDir = path.join(this.repoRoot, 'force-app', 'main', 'default', 'layouts');
-        try {
-            await fs.access(layoutsDir);
-        } catch {
-            return;
-        }
+        for (const layoutsDir of await this.getMetadataDirs('layouts')) {
+            const entries = await fs.readdir(layoutsDir, { withFileTypes: true });
+            for (const entry of entries) {
+                if (!entry.isFile() || !entry.name.endsWith('.layout-meta.xml')) continue;
+                const baseName = entry.name.replace('.layout-meta.xml', '');
+                const dashIdx = baseName.indexOf('-');
+                if (dashIdx === -1) continue;
+                const objectName = baseName.substring(0, dashIdx);
+                const layoutName = baseName.substring(dashIdx + 1);
 
-        const entries = await fs.readdir(layoutsDir, { withFileTypes: true });
-        for (const entry of entries) {
-            if (!entry.isFile() || !entry.name.endsWith('.layout-meta.xml')) continue;
-            const baseName = entry.name.replace('.layout-meta.xml', '');
-            const dashIdx = baseName.indexOf('-');
-            if (dashIdx === -1) continue;
-            const objectName = baseName.substring(0, dashIdx);
-            const layoutName = baseName.substring(dashIdx + 1);
+                const filePath = path.join(layoutsDir, entry.name);
+                const root = await this.parseXML(filePath);
+                if (!root || !root.Layout) continue;
 
-            const filePath = path.join(layoutsDir, entry.name);
-            const root = await this.parseXML(filePath);
-            if (!root || !root.Layout) continue;
+                const layout = root.Layout;
+                const sectionsRaw = layout.layoutSections;
+                const sectionsArr = Array.isArray(sectionsRaw) ? sectionsRaw : sectionsRaw ? [sectionsRaw] : [];
+                let fieldCount = 0;
+                const sections = sectionsArr.map(s => {
+                    const sLabel = this.getText(s.label);
+                    const colsRaw = s.layoutColumns;
+                    const colsArr = Array.isArray(colsRaw) ? colsRaw : colsRaw ? [colsRaw] : [];
+                    let sectionFields = 0;
+                    for (const col of colsArr) {
+                        const itemsRaw = col.layoutItems;
+                        const itemsArr = Array.isArray(itemsRaw) ? itemsRaw : itemsRaw ? [itemsRaw] : [];
+                        sectionFields += itemsArr.length;
+                    }
+                    fieldCount += sectionFields;
+                    return { label: sLabel, fieldCount: sectionFields };
+                });
 
-            const layout = root.Layout;
-            const sectionsRaw = layout.layoutSections;
-            const sectionsArr = Array.isArray(sectionsRaw) ? sectionsRaw : sectionsRaw ? [sectionsRaw] : [];
-            let fieldCount = 0;
-            const sections = sectionsArr.map(s => {
-                const sLabel = this.getText(s.label);
-                const colsRaw = s.layoutColumns;
-                const colsArr = Array.isArray(colsRaw) ? colsRaw : colsRaw ? [colsRaw] : [];
-                let sectionFields = 0;
-                for (const col of colsArr) {
-                    const itemsRaw = col.layoutItems;
-                    const itemsArr = Array.isArray(itemsRaw) ? itemsRaw : itemsRaw ? [itemsRaw] : [];
-                    sectionFields += itemsArr.length;
+                if (!this.data.layouts[objectName]) {
+                    this.data.layouts[objectName] = {};
                 }
-                fieldCount += sectionFields;
-                return { label: sLabel, fieldCount: sectionFields };
-            });
-
-            if (!this.data.layouts[objectName]) {
-                this.data.layouts[objectName] = {};
+                this.data.layouts[objectName][layoutName] = { sections, fieldCount };
             }
-            this.data.layouts[objectName][layoutName] = { sections, fieldCount };
         }
     }
 
@@ -1851,29 +1913,24 @@ class SalesforceDocGenerator {
      * Analyze Visualforce Pages
      */
     async analyzeVisualforcePages() {
-        const pagesDir = path.join(this.repoRoot, 'force-app', 'main', 'default', 'pages');
-        try {
-            await fs.access(pagesDir);
-        } catch {
-            return;
-        }
+        for (const pagesDir of await this.getMetadataDirs('pages')) {
+            const entries = await fs.readdir(pagesDir, { withFileTypes: true });
+            for (const entry of entries) {
+                if (!entry.isFile() || !entry.name.endsWith('.page-meta.xml')) continue;
+                const pageName = entry.name.replace('.page-meta.xml', '');
+                const filePath = path.join(pagesDir, entry.name);
+                const root = await this.parseXML(filePath);
+                if (!root || !root.ApexPage) continue;
 
-        const entries = await fs.readdir(pagesDir, { withFileTypes: true });
-        for (const entry of entries) {
-            if (!entry.isFile() || !entry.name.endsWith('.page-meta.xml')) continue;
-            const pageName = entry.name.replace('.page-meta.xml', '');
-            const filePath = path.join(pagesDir, entry.name);
-            const root = await this.parseXML(filePath);
-            if (!root || !root.ApexPage) continue;
-
-            const page = root.ApexPage;
-            this.data.visualforcePages[pageName] = {
-                name: pageName,
-                label: this.getText(page.label),
-                apiVersion: this.getText(page.apiVersion),
-                availableInTouch: this.getText(page.availableInTouch) === 'true',
-                description: this.getText(page.description),
-            };
+                const page = root.ApexPage;
+                this.data.visualforcePages[pageName] = {
+                    name: pageName,
+                    label: this.getText(page.label),
+                    apiVersion: this.getText(page.apiVersion),
+                    availableInTouch: this.getText(page.availableInTouch) === 'true',
+                    description: this.getText(page.description),
+                };
+            }
         }
     }
 
@@ -1881,42 +1938,37 @@ class SalesforceDocGenerator {
      * Analyze Quick Actions
      */
     async analyzeQuickActions() {
-        const qaDir = path.join(this.repoRoot, 'force-app', 'main', 'default', 'quickActions');
-        try {
-            await fs.access(qaDir);
-        } catch {
-            return;
-        }
+        for (const qaDir of await this.getMetadataDirs('quickActions')) {
+            const entries = await fs.readdir(qaDir, { withFileTypes: true });
+            for (const entry of entries) {
+                if (!entry.isFile() || !entry.name.endsWith('.quickAction-meta.xml')) continue;
+                const baseName = entry.name.replace('.quickAction-meta.xml', '');
+                const dotIdx = baseName.indexOf('.');
+                let objectName, actionName;
+                if (dotIdx !== -1) {
+                    objectName = baseName.substring(0, dotIdx);
+                    actionName = baseName.substring(dotIdx + 1);
+                } else {
+                    objectName = 'Global';
+                    actionName = baseName;
+                }
 
-        const entries = await fs.readdir(qaDir, { withFileTypes: true });
-        for (const entry of entries) {
-            if (!entry.isFile() || !entry.name.endsWith('.quickAction-meta.xml')) continue;
-            const baseName = entry.name.replace('.quickAction-meta.xml', '');
-            const dotIdx = baseName.indexOf('.');
-            let objectName, actionName;
-            if (dotIdx !== -1) {
-                objectName = baseName.substring(0, dotIdx);
-                actionName = baseName.substring(dotIdx + 1);
-            } else {
-                objectName = 'Global';
-                actionName = baseName;
+                const filePath = path.join(qaDir, entry.name);
+                const root = await this.parseXML(filePath);
+                if (!root || !root.QuickAction) continue;
+
+                const qa = root.QuickAction;
+                if (!this.data.quickActions[objectName]) {
+                    this.data.quickActions[objectName] = {};
+                }
+                this.data.quickActions[objectName][actionName] = {
+                    label: this.getText(qa.label),
+                    type: this.getText(qa.type),
+                    actionSubtype: this.getText(qa.actionSubtype),
+                    lwcComponent: this.getText(qa.lightningWebComponent),
+                    targetObject: this.getText(qa.targetObject),
+                };
             }
-
-            const filePath = path.join(qaDir, entry.name);
-            const root = await this.parseXML(filePath);
-            if (!root || !root.QuickAction) continue;
-
-            const qa = root.QuickAction;
-            if (!this.data.quickActions[objectName]) {
-                this.data.quickActions[objectName] = {};
-            }
-            this.data.quickActions[objectName][actionName] = {
-                label: this.getText(qa.label),
-                type: this.getText(qa.type),
-                actionSubtype: this.getText(qa.actionSubtype),
-                lwcComponent: this.getText(qa.lightningWebComponent),
-                targetObject: this.getText(qa.targetObject),
-            };
         }
     }
 
@@ -1924,30 +1976,25 @@ class SalesforceDocGenerator {
      * Analyze Sharing Rules
      */
     async analyzeSharingRules() {
-        const srDir = path.join(this.repoRoot, 'force-app', 'main', 'default', 'sharingRules');
-        try {
-            await fs.access(srDir);
-        } catch {
-            return;
-        }
+        for (const srDir of await this.getMetadataDirs('sharingRules')) {
+            const entries = await fs.readdir(srDir, { withFileTypes: true });
+            for (const entry of entries) {
+                if (!entry.isFile() || !entry.name.endsWith('.sharingRules-meta.xml')) continue;
+                const objectName = entry.name.replace('.sharingRules-meta.xml', '');
+                const filePath = path.join(srDir, entry.name);
+                const root = await this.parseXML(filePath);
+                if (!root || !root.SharingRules) continue;
 
-        const entries = await fs.readdir(srDir, { withFileTypes: true });
-        for (const entry of entries) {
-            if (!entry.isFile() || !entry.name.endsWith('.sharingRules-meta.xml')) continue;
-            const objectName = entry.name.replace('.sharingRules-meta.xml', '');
-            const filePath = path.join(srDir, entry.name);
-            const root = await this.parseXML(filePath);
-            if (!root || !root.SharingRules) continue;
+                const sr = root.SharingRules;
+                const ownerRulesRaw = sr.sharingOwnerRules;
+                const criteriaRulesRaw = sr.sharingCriteriaRules;
+                const ownerRules = (Array.isArray(ownerRulesRaw) ? ownerRulesRaw : ownerRulesRaw ? [ownerRulesRaw] : [])
+                    .map(r => this.getText(r.fullName) || this.getText(r.label));
+                const criteriaRules = (Array.isArray(criteriaRulesRaw) ? criteriaRulesRaw : criteriaRulesRaw ? [criteriaRulesRaw] : [])
+                    .map(r => this.getText(r.fullName) || this.getText(r.label));
 
-            const sr = root.SharingRules;
-            const ownerRulesRaw = sr.sharingOwnerRules;
-            const criteriaRulesRaw = sr.sharingCriteriaRules;
-            const ownerRules = (Array.isArray(ownerRulesRaw) ? ownerRulesRaw : ownerRulesRaw ? [ownerRulesRaw] : [])
-                .map(r => this.getText(r.fullName) || this.getText(r.label));
-            const criteriaRules = (Array.isArray(criteriaRulesRaw) ? criteriaRulesRaw : criteriaRulesRaw ? [criteriaRulesRaw] : [])
-                .map(r => this.getText(r.fullName) || this.getText(r.label));
-
-            this.data.sharingRules[objectName] = { ownerRules, criteriaRules };
+                this.data.sharingRules[objectName] = { ownerRules, criteriaRules };
+            }
         }
     }
 
@@ -1955,31 +2002,26 @@ class SalesforceDocGenerator {
      * Analyze Global Value Sets
      */
     async analyzeGlobalValueSets() {
-        const gvsDir = path.join(this.repoRoot, 'force-app', 'main', 'default', 'globalValueSets');
-        try {
-            await fs.access(gvsDir);
-        } catch {
-            return;
-        }
+        for (const gvsDir of await this.getMetadataDirs('globalValueSets')) {
+            const entries = await fs.readdir(gvsDir, { withFileTypes: true });
+            for (const entry of entries) {
+                if (!entry.isFile() || !entry.name.endsWith('.globalValueSet-meta.xml')) continue;
+                const setName = entry.name.replace('.globalValueSet-meta.xml', '');
+                const filePath = path.join(gvsDir, entry.name);
+                const root = await this.parseXML(filePath);
+                if (!root || !root.GlobalValueSet) continue;
 
-        const entries = await fs.readdir(gvsDir, { withFileTypes: true });
-        for (const entry of entries) {
-            if (!entry.isFile() || !entry.name.endsWith('.globalValueSet-meta.xml')) continue;
-            const setName = entry.name.replace('.globalValueSet-meta.xml', '');
-            const filePath = path.join(gvsDir, entry.name);
-            const root = await this.parseXML(filePath);
-            if (!root || !root.GlobalValueSet) continue;
+                const gvs = root.GlobalValueSet;
+                const customValuesRaw = gvs.customValue;
+                const customValuesArr = Array.isArray(customValuesRaw) ? customValuesRaw : customValuesRaw ? [customValuesRaw] : [];
+                const values = customValuesArr.map(v => ({
+                    fullName: this.getText(v.fullName),
+                    label: this.getText(v.label),
+                    isDefault: this.getText(v.default) === 'true',
+                }));
 
-            const gvs = root.GlobalValueSet;
-            const customValuesRaw = gvs.customValue;
-            const customValuesArr = Array.isArray(customValuesRaw) ? customValuesRaw : customValuesRaw ? [customValuesRaw] : [];
-            const values = customValuesArr.map(v => ({
-                fullName: this.getText(v.fullName),
-                label: this.getText(v.label),
-                isDefault: this.getText(v.default) === 'true',
-            }));
-
-            this.data.globalValueSets[setName] = { values };
+                this.data.globalValueSets[setName] = { values };
+            }
         }
     }
 
@@ -1987,29 +2029,24 @@ class SalesforceDocGenerator {
      * Analyze Roles
      */
     async analyzeRoles() {
-        const rolesDir = path.join(this.repoRoot, 'force-app', 'main', 'default', 'roles');
-        try {
-            await fs.access(rolesDir);
-        } catch {
-            return;
-        }
+        for (const rolesDir of await this.getMetadataDirs('roles')) {
+            const entries = await fs.readdir(rolesDir, { withFileTypes: true });
+            for (const entry of entries) {
+                if (!entry.isFile() || !entry.name.endsWith('.role-meta.xml')) continue;
+                const roleName = entry.name.replace('.role-meta.xml', '');
+                const filePath = path.join(rolesDir, entry.name);
+                const root = await this.parseXML(filePath);
+                if (!root || !root.Role) continue;
 
-        const entries = await fs.readdir(rolesDir, { withFileTypes: true });
-        for (const entry of entries) {
-            if (!entry.isFile() || !entry.name.endsWith('.role-meta.xml')) continue;
-            const roleName = entry.name.replace('.role-meta.xml', '');
-            const filePath = path.join(rolesDir, entry.name);
-            const root = await this.parseXML(filePath);
-            if (!root || !root.Role) continue;
-
-            const role = root.Role;
-            this.data.roles[roleName] = {
-                name: this.getText(role.name),
-                parentRole: this.getText(role.parentRole),
-                caseAccessLevel: this.getText(role.caseAccessLevel),
-                contactAccessLevel: this.getText(role.contactAccessLevel),
-                opportunityAccessLevel: this.getText(role.opportunityAccessLevel),
-            };
+                const role = root.Role;
+                this.data.roles[roleName] = {
+                    name: this.getText(role.name),
+                    parentRole: this.getText(role.parentRole),
+                    caseAccessLevel: this.getText(role.caseAccessLevel),
+                    contactAccessLevel: this.getText(role.contactAccessLevel),
+                    opportunityAccessLevel: this.getText(role.opportunityAccessLevel),
+                };
+            }
         }
     }
 
@@ -2017,31 +2054,26 @@ class SalesforceDocGenerator {
      * Analyze Queues
      */
     async analyzeQueues() {
-        const queuesDir = path.join(this.repoRoot, 'force-app', 'main', 'default', 'queues');
-        try {
-            await fs.access(queuesDir);
-        } catch {
-            return;
-        }
+        for (const queuesDir of await this.getMetadataDirs('queues')) {
+            const entries = await fs.readdir(queuesDir, { withFileTypes: true });
+            for (const entry of entries) {
+                if (!entry.isFile() || !entry.name.endsWith('.queue-meta.xml')) continue;
+                const queueName = entry.name.replace('.queue-meta.xml', '');
+                const filePath = path.join(queuesDir, entry.name);
+                const root = await this.parseXML(filePath);
+                if (!root || !root.Queue) continue;
 
-        const entries = await fs.readdir(queuesDir, { withFileTypes: true });
-        for (const entry of entries) {
-            if (!entry.isFile() || !entry.name.endsWith('.queue-meta.xml')) continue;
-            const queueName = entry.name.replace('.queue-meta.xml', '');
-            const filePath = path.join(queuesDir, entry.name);
-            const root = await this.parseXML(filePath);
-            if (!root || !root.Queue) continue;
+                const queue = root.Queue;
+                const sobjectsRaw = queue.queueSobject;
+                const sobjectsArr = Array.isArray(sobjectsRaw) ? sobjectsRaw : sobjectsRaw ? [sobjectsRaw] : [];
+                const objects = sobjectsArr.map(s => this.getText(s.sobjectType));
 
-            const queue = root.Queue;
-            const sobjectsRaw = queue.queueSobject;
-            const sobjectsArr = Array.isArray(sobjectsRaw) ? sobjectsRaw : sobjectsRaw ? [sobjectsRaw] : [];
-            const objects = sobjectsArr.map(s => this.getText(s.sobjectType));
-
-            this.data.queues[queueName] = {
-                name: this.getText(queue.name),
-                emailMembers: this.getText(queue.doesSendEmailToMembers) === 'true',
-                objects,
-            };
+                this.data.queues[queueName] = {
+                    name: this.getText(queue.name),
+                    emailMembers: this.getText(queue.doesSendEmailToMembers) === 'true',
+                    objects,
+                };
+            }
         }
     }
 
@@ -2049,32 +2081,27 @@ class SalesforceDocGenerator {
      * Analyze Workflows
      */
     async analyzeWorkflows() {
-        const wfDir = path.join(this.repoRoot, 'force-app', 'main', 'default', 'workflows');
-        try {
-            await fs.access(wfDir);
-        } catch {
-            return;
-        }
+        for (const wfDir of await this.getMetadataDirs('workflows')) {
+            const entries = await fs.readdir(wfDir, { withFileTypes: true });
+            for (const entry of entries) {
+                if (!entry.isFile() || !entry.name.endsWith('.workflow-meta.xml')) continue;
+                const objectName = entry.name.replace('.workflow-meta.xml', '');
+                const filePath = path.join(wfDir, entry.name);
+                const root = await this.parseXML(filePath);
+                if (!root || !root.Workflow) continue;
 
-        const entries = await fs.readdir(wfDir, { withFileTypes: true });
-        for (const entry of entries) {
-            if (!entry.isFile() || !entry.name.endsWith('.workflow-meta.xml')) continue;
-            const objectName = entry.name.replace('.workflow-meta.xml', '');
-            const filePath = path.join(wfDir, entry.name);
-            const root = await this.parseXML(filePath);
-            if (!root || !root.Workflow) continue;
+                const wf = root.Workflow;
+                const alertsRaw = wf.alerts;
+                const fieldUpdatesRaw = wf.fieldUpdates;
+                const rulesRaw = wf.rules;
 
-            const wf = root.Workflow;
-            const alertsRaw = wf.alerts;
-            const fieldUpdatesRaw = wf.fieldUpdates;
-            const rulesRaw = wf.rules;
+                const toArr = (v) => Array.isArray(v) ? v : v ? [v] : [];
+                const alerts = toArr(alertsRaw).map(a => this.getText(a.fullName));
+                const fieldUpdates = toArr(fieldUpdatesRaw).map(f => this.getText(f.fullName));
+                const rules = toArr(rulesRaw).map(r => this.getText(r.fullName));
 
-            const toArr = (v) => Array.isArray(v) ? v : v ? [v] : [];
-            const alerts = toArr(alertsRaw).map(a => this.getText(a.fullName));
-            const fieldUpdates = toArr(fieldUpdatesRaw).map(f => this.getText(f.fullName));
-            const rules = toArr(rulesRaw).map(r => this.getText(r.fullName));
-
-            this.data.workflows[objectName] = { alerts, fieldUpdates, rules };
+                this.data.workflows[objectName] = { alerts, fieldUpdates, rules };
+            }
         }
     }
 
@@ -2082,27 +2109,22 @@ class SalesforceDocGenerator {
      * Analyze Static Resources
      */
     async analyzeStaticResources() {
-        const srDir = path.join(this.repoRoot, 'force-app', 'main', 'default', 'staticresources');
-        try {
-            await fs.access(srDir);
-        } catch {
-            return;
-        }
+        for (const srDir of await this.getMetadataDirs('staticresources')) {
+            const entries = await fs.readdir(srDir, { withFileTypes: true });
+            for (const entry of entries) {
+                if (!entry.isFile() || !entry.name.endsWith('.resource-meta.xml')) continue;
+                const resourceName = entry.name.replace('.resource-meta.xml', '');
+                const filePath = path.join(srDir, entry.name);
+                const root = await this.parseXML(filePath);
+                if (!root || !root.StaticResource) continue;
 
-        const entries = await fs.readdir(srDir, { withFileTypes: true });
-        for (const entry of entries) {
-            if (!entry.isFile() || !entry.name.endsWith('.resource-meta.xml')) continue;
-            const resourceName = entry.name.replace('.resource-meta.xml', '');
-            const filePath = path.join(srDir, entry.name);
-            const root = await this.parseXML(filePath);
-            if (!root || !root.StaticResource) continue;
-
-            const sr = root.StaticResource;
-            this.data.staticResources[resourceName] = {
-                name: resourceName,
-                contentType: this.getText(sr.contentType),
-                cacheControl: this.getText(sr.cacheControl),
-            };
+                const sr = root.StaticResource;
+                this.data.staticResources[resourceName] = {
+                    name: resourceName,
+                    contentType: this.getText(sr.contentType),
+                    cacheControl: this.getText(sr.cacheControl),
+                };
+            }
         }
     }
 
@@ -2110,32 +2132,27 @@ class SalesforceDocGenerator {
      * Analyze Lightning Applications (Aura Apps / Custom Apps)
      */
     async analyzeApplications() {
-        const appsDir = path.join(this.repoRoot, 'force-app', 'main', 'default', 'applications');
-        try {
-            await fs.access(appsDir);
-        } catch {
-            return;
-        }
+        for (const appsDir of await this.getMetadataDirs('applications')) {
+            const entries = await fs.readdir(appsDir, { withFileTypes: true });
+            for (const entry of entries) {
+                if (!entry.isFile() || !entry.name.endsWith('.app-meta.xml')) continue;
+                const appName = entry.name.replace('.app-meta.xml', '');
+                const filePath = path.join(appsDir, entry.name);
+                const root = await this.parseXML(filePath);
+                if (!root || !root.CustomApplication) continue;
 
-        const entries = await fs.readdir(appsDir, { withFileTypes: true });
-        for (const entry of entries) {
-            if (!entry.isFile() || !entry.name.endsWith('.app-meta.xml')) continue;
-            const appName = entry.name.replace('.app-meta.xml', '');
-            const filePath = path.join(appsDir, entry.name);
-            const root = await this.parseXML(filePath);
-            if (!root || !root.CustomApplication) continue;
+                const app = root.CustomApplication;
+                const tabsRaw = app.tabs;
+                const tabsArr = Array.isArray(tabsRaw) ? tabsRaw : tabsRaw ? [tabsRaw] : [];
 
-            const app = root.CustomApplication;
-            const tabsRaw = app.tabs;
-            const tabsArr = Array.isArray(tabsRaw) ? tabsRaw : tabsRaw ? [tabsRaw] : [];
-
-            this.data.applications[appName] = {
-                name: appName,
-                label: this.getText(app.label),
-                navType: this.getText(app.navType),
-                uiType: this.getText(app.uiType),
-                tabCount: tabsArr.length,
-            };
+                this.data.applications[appName] = {
+                    name: appName,
+                    label: this.getText(app.label),
+                    navType: this.getText(app.navType),
+                    uiType: this.getText(app.uiType),
+                    tabCount: tabsArr.length,
+                };
+            }
         }
     }
 
@@ -2997,13 +3014,14 @@ class SalesforceDocGenerator {
      * Generate Integrations page
      */
     async generateIntegrations() {
-        const ncDir = path.join(this.repoRoot, 'force-app', 'main', 'default', 'namedCredentials');
         let ncCount = 0;
-        try {
-            const files = await this.findFiles(ncDir, '*.xml');
-            ncCount = files.length;
-        } catch {
-            // Directory doesn't exist
+        for (const ncDir of await this.getMetadataDirs('namedCredentials')) {
+            try {
+                const files = await this.findFiles(ncDir, '*.xml');
+                ncCount += files.length;
+            } catch {
+                // Directory doesn't exist
+            }
         }
         
         const data = {
