@@ -192,7 +192,9 @@ The portal can generate a complete **MkDocs-compatible documentation site** from
 
 ```bash
 # 1. Install Python MkDocs dependencies (once)
-pip install mkdocs mkdocs-material pymdown-extensions
+#    requirements.txt pins mkdocs<2.0 and mkdocs-material<10.0 to avoid the
+#    incompatible MkDocs 2.0 fork. See https://squidfunk.github.io/mkdocs-material/blog/2026/02/18/mkdocs-2.0/
+pip install -r requirements.txt
 
 # 2. Generate Markdown files + mkdocs.yml
 npm run generate:markdown

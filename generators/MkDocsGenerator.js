@@ -695,8 +695,18 @@ ${typeRows || '| *(none found)* | |'}
                 'tables',
                 'toc',
                 'pymdownx.details',
-                'pymdownx.superfences',
-                'pymdownx.tabbed',
+                {
+                    'pymdownx.superfences': {
+                        custom_fences: [
+                            {
+                                name: 'mermaid',
+                                class: 'mermaid',
+                                format: { __yaml_raw: '!!python/name:pymdownx.superfences.fence_code_format' }
+                            }
+                        ]
+                    }
+                },
+                { 'pymdownx.tabbed': { alternate_style: true } },
                 'pymdownx.highlight'
             ],
             ...(mkdocsCfg.extra_css  && mkdocsCfg.extra_css.length  ? { extra_css:        mkdocsCfg.extra_css        } : {}),
@@ -799,11 +809,19 @@ ${typeRows || '| *(none found)* | |'}
             }).join('\n');
         }
         if (typeof value === 'object') {
+            // Special marker: emit a raw YAML scalar verbatim (e.g. !!python/name: tags).
+            if ('__yaml_raw' in value) {
+                return String(value.__yaml_raw);
+            }
             const keys = Object.keys(value);
             if (keys.length === 0) return '{}';
             return keys.map((k, i) => {
                 const v = value[k];
                 const keyStr = /[:{}\[\],&*#?|<>=!%@` ]/.test(k) ? `"${k}"` : k;
+                // Raw YAML scalar – emit inline on the same line as the key
+                if (typeof v === 'object' && v !== null && !Array.isArray(v) && '__yaml_raw' in v) {
+                    return `${pad}${keyStr}: ${v.__yaml_raw}`;
+                }
                 if (typeof v === 'object' && v !== null && !Array.isArray(v)) {
                     return `${pad}${keyStr}:\n${this._renderYaml(v, indent + 1)}`;
                 }
