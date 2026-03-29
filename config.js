@@ -105,7 +105,14 @@ export const config = {
 
         // Extra CSS / JS files placed inside the docs directory.
         extra_css: [],
-        extra_javascript: []
+        extra_javascript: [],
+
+        // Glob patterns for documentation pages that are intentionally not included
+        // in the nav sidebar.  MkDocs 1.5+ uses these patterns to suppress INFO/WARNING
+        // messages about "orphaned" pages that exist in docs/ but are reachable only via
+        // links (e.g. individual source-viewer, Apex-class, and Object pages).
+        // Defaults: ['source/*.md', 'apex/*.md', 'objects/*.md']
+        // not_in_nav_patterns: ['source/*.md', 'apex/*.md', 'objects/*.md']
     },
 
     // ─── Pandoc-Generated Folder Ingestion ────────────────────────────────────
