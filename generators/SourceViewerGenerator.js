@@ -79,6 +79,8 @@ export class SourceViewerGenerator extends BaseGenerator {
      * @param {string} name              - Human-readable component name
      */
     async _generateFileViewerPage(relativeFilePath, name) {
+        // Normalize to forward slashes for consistent cross-platform behaviour
+        relativeFilePath = relativeFilePath.replace(/\\/g, '/');
         const absolutePath = path.join(this.repoRoot, relativeFilePath);
         let content = '';
         try {
@@ -116,6 +118,8 @@ export class SourceViewerGenerator extends BaseGenerator {
      * @param {string} name               - Human-readable component name
      */
     async _generateFolderViewerPage(relativeFolderPath, name) {
+        // Normalize to forward slashes for consistent cross-platform behaviour
+        relativeFolderPath = relativeFolderPath.replace(/\\/g, '/');
         const absolutePath = path.join(this.repoRoot, relativeFolderPath);
         let files = [];
         try {

@@ -102,7 +102,7 @@ export class PandocImporter extends BaseGenerator {
 
         const navItems = [];
         for (const filePath of mdFiles) {
-            const relPath = path.relative(sourcePath, filePath);
+            const relPath = path.relative(sourcePath, filePath).replace(/\\/g, '/');
             const destPath = path.join(destDir, relPath);
 
             await fs.mkdir(path.dirname(destPath), { recursive: true });

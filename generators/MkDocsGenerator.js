@@ -723,6 +723,8 @@ ${typeRows || '| *(none found)* | |'}
 
     /** Write a markdown source-file viewer page. */
     async _writeSourceFileMd(relativeFilePath, name) {
+        // Normalize to forward slashes for consistent cross-platform behaviour
+        relativeFilePath = relativeFilePath.replace(/\\/g, '/');
         const safeName = this._safeName(relativeFilePath);
         const fileName = path.basename(relativeFilePath);
         const ext      = path.extname(fileName).toLowerCase();
@@ -758,6 +760,8 @@ ${content}
 
     /** Write a markdown source-folder browser page. */
     async _writeSourceFolderMd(relativeFolderPath, name) {
+        // Normalize to forward slashes for consistent cross-platform behaviour
+        relativeFolderPath = relativeFolderPath.replace(/\\/g, '/');
         const safeName   = this._safeName(relativeFolderPath);
         const absPath    = path.join(this.repoRoot, relativeFolderPath);
 
@@ -955,7 +959,9 @@ ${sections || '*No source files found.*'}
 
     /** Write a markdown file to the docs directory. */
     async _writeMd(relativePath, content) {
-        const fullPath = path.join(this.docsDir, relativePath);
+        // Normalise to forward slashes so the path is valid on all platforms
+        const normalisedRelPath = relativePath.replace(/\\/g, '/');
+        const fullPath = path.join(this.docsDir, normalisedRelPath);
         await fs.mkdir(path.dirname(fullPath), { recursive: true });
         await fs.writeFile(fullPath, content, 'utf-8');
     }

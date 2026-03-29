@@ -194,24 +194,34 @@ const isMainModule = process.argv[1] && (
 /**
  * Resolve the Salesforce source directory from CLI args or environment.
  * Priority:
- *   1. --source=<path>  (CLI flag)
- *   2. SOURCE_DIR env var
- *   3. positional argv[2]
- *   4. parent of this script (default: treats salesforce repo as the parent folder)
+ *   1. --source=<path>  (CLI flag, equals-separated)
+ *   2. --source <path>  (CLI flag, space-separated)
+ *   3. SOURCE_DIR env var
+ *   4. positional argv[2]
+ *   5. parent of this script (default: treats salesforce repo as the parent folder)
  */
 function resolveSourceDir() {
     // 1. --source=<path>
     const sourceFlag = process.argv.find(a => a.startsWith('--source='));
     if (sourceFlag) return sourceFlag.slice('--source='.length);
 
-    // 2. SOURCE_DIR env var
+    // 2. --source <path> (space-separated, e.g. produced by npm run generate:markdown <path>)
+    const sourceFlagIdx = process.argv.indexOf('--source');
+    if (sourceFlagIdx !== -1) {
+        const next = process.argv[sourceFlagIdx + 1];
+        if (next && !next.startsWith('--')) {
+            return next;
+        }
+    }
+
+    // 3. SOURCE_DIR env var
     if (process.env.SOURCE_DIR) return process.env.SOURCE_DIR;
 
-    // 3. positional arg (legacy)
+    // 4. positional arg (legacy)
     const positional = process.argv.slice(2).find(a => !a.startsWith('--'));
     if (positional) return positional;
 
-    // 4. default: parent directory of this script
+    // 5. default: parent directory of this script
     return path.join(__dirname, '..');
 }
 
