@@ -8,8 +8,8 @@
     "init": "node init.js",
     "generate": "node generate.js",
     "generate:source": "node generate.js --source",
-    "generate:markdown": "OUTPUT_FORMAT=markdown node generate.js",
-    "generate:both": "OUTPUT_FORMAT=both node generate.js",
+    "generate:markdown": "cross-env OUTPUT_FORMAT=markdown node generate.js",
+    "generate:both": "cross-env OUTPUT_FORMAT=both node generate.js",
     "update": "node update.js",
     "start": "node generate.js",
     "serve": "node serve.js",
@@ -17,7 +17,7 @@
     "serve:mkdocs": "mkdocs serve",
     "build:mkdocs": "mkdocs build",
     "dev": "node generate.js && node serve.js",
-    "dev:markdown": "OUTPUT_FORMAT=markdown node generate.js && mkdocs serve",
+    "dev:markdown": "cross-env OUTPUT_FORMAT=markdown node generate.js && mkdocs serve",
     "regenerate": "node generate.js",
     "cleanup": "node cleanup.js",
     "clean": "node cleanup.js",
@@ -42,6 +42,7 @@
     "xml2js": "^0.6.2"
   },
   "devDependencies": {
+    "cross-env": "^10.1.0",
     "glob": "^13.0.0",
     "http-server": "^14.1.1"
   },
