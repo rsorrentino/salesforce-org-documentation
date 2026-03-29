@@ -211,12 +211,14 @@ npm run build:mkdocs        # runs: mkdocs build  →  outputs to site/
 ```
 docs/                        # generated Markdown files
 ├── index.md                 # dashboard overview
+├── llms.txt                 # AI-agent navigation file (llmstxt.org convention)
+├── ai-manifest.json         # machine-readable JSON index of all pages
 ├── apex/
 │   ├── index.md             # all Apex classes
-│   └── <ClassName>.md       # individual class detail
+│   └── <ClassName>.md       # individual class detail (rich front-matter)
 ├── objects/
 │   ├── index.md
-│   └── <ObjectName>.md
+│   └── <ObjectName>.md      # individual object detail (rich front-matter)
 ├── automation/index.md
 ├── profiles/index.md
 ├── ui/index.md
@@ -305,6 +307,108 @@ pandoc -f docx -t markdown -o functional-specs/my-spec.md my-spec.docx
 
 # Now generate the full docs (HTML + MkDocs with pandoc-imported specs)
 OUTPUT_FORMAT=both node generate.js --source=../my-salesforce-repo
+```
+
+---
+
+## AI Agent Integration
+
+When `OUTPUT_FORMAT` is `markdown` or `both`, the generator produces two additional artefacts inside the `docs/` directory specifically designed for consumption by AI agents and LLM-powered applications.
+
+### `docs/llms.txt`
+
+A plain-text file following the [llmstxt.org](https://llmstxt.org/) convention.  An AI agent that receives the `docs/` root URL can fetch `llms.txt` first to understand the complete documentation structure before retrieving individual pages.
+
+```
+# Salesforce Technical Documentation
+
+> Auto-generated technical documentation for a Salesforce organisation.
+> Generated at: 2026-03-29T12:00:00.000Z
+> Machine-readable index: ai-manifest.json
+
+## Summary
+
+- Apex Classes: 142
+- Custom Objects: 38
+...
+
+## Section Index Pages
+
+- [Home](index.md): Dashboard overview with all entity counts and navigation.
+- [Apex Classes & Triggers](apex/index.md): ...
+...
+
+## Individual Apex Class Pages
+
+- [OrderProcessor](apex/OrderProcessor.md)
+...
+```
+
+### `docs/ai-manifest.json`
+
+A machine-readable JSON index of **every generated page**.  An external application can fetch this single file to enumerate all documentation pages with their types, API names, and basic statistics—without reading each `.md` file individually.
+
+```json
+{
+  "generated_at": "2026-03-29T12:00:00.000Z",
+  "entity_counts": {
+    "apex_classes": 142,
+    "custom_objects": 38,
+    "flows": 67,
+    ...
+  },
+  "sections": {
+    "apex": { "index": "apex/index.md", "pages": ["apex/OrderProcessor.md", ...] },
+    "objects": { "index": "objects/index.md", "pages": ["objects/Order__c.md", ...] },
+    ...
+  },
+  "all_pages": [
+    { "path": "index.md", "entity_type": "overview", "section": "root" },
+    { "path": "apex/OrderProcessor.md", "entity_type": "apex_class", "api_name": "OrderProcessor", "method_count": 7, "is_test": false },
+    { "path": "objects/Order__c.md", "entity_type": "custom_object", "api_name": "Order__c", "field_count": 15 },
+    ...
+  ]
+}
+```
+
+### Enhanced YAML front-matter
+
+Every generated `.md` file now includes machine-readable front-matter fields that AI agents can parse:
+
+| Field | Present on | Description |
+|---|---|---|
+| `entity_type` | All pages | `overview`, `section_index`, `apex_class`, or `custom_object` |
+| `generated_at` | All pages | ISO-8601 timestamp of the generation run |
+| `api_name` | Per-entity pages | Salesforce API name (unique identifier) |
+| `is_test` | Apex class pages | Whether the class is a test class |
+| `method_count` | Apex class pages | Number of methods |
+| `sharing_model` | Apex class pages | Apex sharing model |
+| `referenced_objects` | Apex class pages | YAML list of Salesforce objects referenced |
+| `source_file` | Apex class pages | Relative path to the source `.cls` file |
+| `field_count` | Object pages | Number of custom fields |
+| `relationship_count` | Object pages | Number of relationships |
+| `related_objects` | Object pages | YAML list of related object API names |
+
+**Example Apex class front-matter:**
+
+```yaml
+---
+title: "OrderProcessor"
+description: "Apex class documentation for OrderProcessor"
+entity_type: apex_class
+api_name: "OrderProcessor"
+generated_at: "2026-03-29T12:00:00.000Z"
+is_test: false
+method_count: 7
+sharing_model: "InheritedSharing"
+referenced_objects:
+  - "Order__c"
+  - "Account"
+source_file: "force-app/main/default/classes/OrderProcessor.cls"
+tags:
+  - apex
+  - class
+---
 ```
 
 ---
