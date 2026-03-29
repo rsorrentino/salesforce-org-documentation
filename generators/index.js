@@ -23,5 +23,6 @@ export { DashboardGenerator } from './DashboardGenerator.js';
 export { PermissionDrilldownGenerator } from './PermissionDrilldownGenerator.js';
 export { DiffGenerator } from './DiffGenerator.js';
 export { CustomMetadataGenerator } from './CustomMetadataGenerator.js';
-
+export { MkDocsGenerator } from './MkDocsGenerator.js';
+export { PandocImporter } from './PandocImporter.js';
 

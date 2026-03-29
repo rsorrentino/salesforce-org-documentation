@@ -1,0 +1,110 @@
+/**
+ * Salesforce Documentation Portal - Configuration
+ *
+ * Controls output format, MkDocs settings, and Pandoc path ingestion.
+ *
+ * Quick-start overrides (two options):
+ *   1. Set environment variables:
+ *        OUTPUT_FORMAT=markdown node generate.js
+ *   2. Copy this file to docs.config.local.js, edit it there, and the
+ *      local file will automatically take precedence.
+ */
+
+export const config = {
+    // ─── Output Format ────────────────────────────────────────────────────────
+    // 'html'     – generate static HTML pages (original behaviour, default)
+    // 'markdown' – generate Markdown files suitable for MkDocs
+    // 'both'     – generate both HTML pages AND Markdown/MkDocs output
+    outputFormat: process.env.OUTPUT_FORMAT || 'html',
+
+    // Directory (relative to this tool's location) where Markdown docs are written.
+    // MkDocs expects this to be named 'docs' by default.
+    docsOutputDir: process.env.DOCS_OUTPUT_DIR || 'docs',
+
+    // ─── MkDocs Configuration ─────────────────────────────────────────────────
+    // These values are used to generate mkdocs.yml.
+    // Install dependencies with:
+    //   pip install mkdocs mkdocs-material pymdown-extensions
+    mkdocs: {
+        site_name: process.env.MKDOCS_SITE_NAME || 'Salesforce Technical Documentation',
+        site_description: 'Auto-generated Salesforce Org Documentation Portal',
+        site_author: process.env.MKDOCS_SITE_AUTHOR || '',
+
+        // MkDocs theme. Recommended: 'material' (requires mkdocs-material).
+        // Alternatives: 'readthedocs', 'mkdocs' (built-in, no extra install).
+        theme: {
+            name: 'material',
+            palette: [
+                {
+                    scheme: 'default',
+                    primary: 'blue',
+                    accent: 'indigo',
+                    toggle: {
+                        icon: 'material/brightness-7',
+                        name: 'Switch to dark mode'
+                    }
+                },
+                {
+                    scheme: 'slate',
+                    primary: 'blue',
+                    accent: 'indigo',
+                    toggle: {
+                        icon: 'material/brightness-4',
+                        name: 'Switch to light mode'
+                    }
+                }
+            ],
+            features: [
+                'navigation.tabs',
+                'navigation.sections',
+                'navigation.expand',
+                'search.suggest',
+                'search.highlight',
+                'content.code.copy'
+            ]
+        },
+
+        // MkDocs plugins (must be installed separately via pip).
+        plugins: ['search'],
+
+        // Python-Markdown extensions to enable.
+        // pymdownx.superfences is required for Mermaid diagram code blocks.
+        markdown_extensions: [
+            'admonition',
+            'tables',
+            'toc',
+            'pymdownx.details',
+            'pymdownx.superfences',
+            'pymdownx.tabbed',
+            'pymdownx.highlight'
+        ],
+
+        // Extra CSS / JS files placed inside the docs directory.
+        extra_css: [],
+        extra_javascript: []
+    },
+
+    // ─── Pandoc-Generated Folder Ingestion ────────────────────────────────────
+    // List folders whose Markdown files (produced by pandoc) should be copied
+    // into the docs/functional/<section>/ tree and added to the MkDocs nav.
+    //
+    // Each entry:
+    //   path    – absolute path OR path relative to this config file's directory
+    //   section – slug used as the sub-folder name under docs/functional/
+    //   title   – human-readable nav label shown in mkdocs.yml
+    //
+    // Example:
+    //   pandocPaths: [
+    //     {
+    //       path: '/absolute/path/to/functional-specs',
+    //       section: 'functional-specs',
+    //       title: 'Functional Specifications'
+    //     },
+    //     {
+    //       path: '../business-requirements',
+    //       section: 'business-requirements',
+    //       title: 'Business Requirements'
+    //     }
+    //   ]
+    pandocPaths: []
+};

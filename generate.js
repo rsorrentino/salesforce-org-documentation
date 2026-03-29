@@ -31,7 +31,9 @@ import {
     DashboardGenerator,
     PermissionDrilldownGenerator,
     DiffGenerator,
-    CustomMetadataGenerator
+    CustomMetadataGenerator,
+    MkDocsGenerator,
+    PandocImporter
 } from './generators/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -39,11 +41,29 @@ const __dirname = path.dirname(__filename);
 
 import { SalesforceDocGenerator } from './analyzer.js';
 
+/**
+ * Load configuration: check for a local override file first, then fall back
+ * to the default config.js shipped with the tool.
+ */
+async function loadConfig() {
+    const localCfgPath = new URL('./docs.config.local.js', import.meta.url);
+    try {
+        const { config } = await import(localCfgPath.href);
+        console.log('Using local configuration from docs.config.local.js');
+        return config;
+    } catch {
+        // No local override – use defaults
+        const { config } = await import('./config.js');
+        return config;
+    }
+}
+
 class ModularDocGenerator {
-    constructor(repoRoot) {
+    constructor(repoRoot, config = {}) {
         this.repoRoot = path.resolve(repoRoot || path.join(__dirname, '..'));
         this.toolDir = __dirname;
         this.data = {};
+        this.config = config;
 
         // Use the existing analyzer — pass toolDir so index.html is written to the right place
         this.analyzer = new SalesforceDocGenerator(repoRoot, __dirname);
@@ -123,6 +143,29 @@ class ModularDocGenerator {
             console.error('Error in SitemapGenerator:', error.message);
         }
 
+        // ── MkDocs / Markdown output (when outputFormat is 'markdown' or 'both') ──
+        const outputFormat = (this.config.outputFormat || 'html').toLowerCase();
+        if (outputFormat === 'markdown' || outputFormat === 'both') {
+            console.log('\nGenerating MkDocs Markdown output...');
+
+            // 1. Import pandoc-generated folders (if any configured)
+            let pandocNavEntries = [];
+            try {
+                const pandocImporter = new PandocImporter(this.repoRoot, this.data, this.toolDir, this.config);
+                pandocNavEntries = await pandocImporter.importAll();
+            } catch (error) {
+                console.error('Error in PandocImporter:', error.message);
+            }
+
+            // 2. Generate Markdown pages + mkdocs.yml
+            try {
+                const mkdocsGen = new MkDocsGenerator(this.repoRoot, this.data, this.toolDir, this.config, pandocNavEntries);
+                await mkdocsGen.generate();
+            } catch (error) {
+                console.error('Error in MkDocsGenerator:', error.message);
+            }
+        }
+
         console.log('\nDocumentation generation complete!');
     }
     
@@ -174,10 +217,11 @@ if (isMainModule) {
     const repoRoot = resolveSourceDir();
     const resolvedRoot = path.resolve(repoRoot);
 
-    // Validate path exists
-    fs.access(resolvedRoot).then(() => {
+    // Validate path exists, then load config and generate
+    fs.access(resolvedRoot).then(async () => {
         console.log(`Analyzing Salesforce metadata at: ${resolvedRoot}\n`);
-        const generator = new ModularDocGenerator(resolvedRoot);
+        const config = await loadConfig();
+        const generator = new ModularDocGenerator(resolvedRoot, config);
         return generator.generateAll();
     }).catch(error => {
         if (error.code === 'ENOENT') {

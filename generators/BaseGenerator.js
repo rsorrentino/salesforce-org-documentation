@@ -923,6 +923,59 @@ export class BaseGenerator {
         
         return '<ul>' + usedIn.map(item => `<li>${item}</li>`).join('\n') + '</ul>';
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Markdown helpers (used by MkDocsGenerator and subclasses)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Escape characters that have special meaning inside a Markdown table cell
+     * or inline context.  Does NOT escape text already inside a code span.
+     * @param {*} text
+     * @returns {string}
+     */
+    escapeMarkdown(text) {
+        if (!text && text !== 0) return '';
+        return String(text)
+            .replace(/\\/g, '\\\\')
+            .replace(/\|/g, '\\|')
+            .replace(/\n/g, ' ');
+    }
+
+    /**
+     * Write a Markdown file to an arbitrary absolute path.
+     * Creates parent directories automatically.
+     * @param {string} absolutePath - Full destination path (must end with .md)
+     * @param {string} content      - Markdown content
+     */
+    async writeMarkdownPage(absolutePath, content) {
+        await fs.mkdir(path.dirname(absolutePath), { recursive: true });
+        await fs.writeFile(absolutePath, content, 'utf-8');
+    }
+
+    /**
+     * Build a minimal YAML front-matter block.
+     * @param {Object} meta - Key/value pairs (title, description, tags array, …)
+     * @returns {string} Front-matter string including opening and closing `---` lines
+     */
+    buildFrontmatter(meta = {}) {
+        const lines = ['---'];
+        for (const [key, value] of Object.entries(meta)) {
+            if (Array.isArray(value)) {
+                lines.push(`${key}:`);
+                value.forEach(item => lines.push(`  - ${item}`));
+            } else if (value !== null && value !== undefined && value !== '') {
+                // Quote the value if it contains characters that are special in YAML.
+                // Pattern mirrors the one used in MkDocsGenerator._renderYaml.
+                const safe = /[:{}\[\],&*#?|<>=!%@`'"\\]/.test(String(value)) || String(value).includes('\n')
+                    ? `"${String(value).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`
+                    : String(value);
+                lines.push(`${key}: ${safe}`);
+            }
+        }
+        lines.push('---', '');
+        return lines.join('\n');
+    }
 }
 
 

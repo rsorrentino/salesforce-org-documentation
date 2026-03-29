@@ -148,6 +148,14 @@ pages/
 data/
 sitemap.xml
 
+# MkDocs generated output
+docs/
+mkdocs.yml
+site/
+
+# Local configuration override (do not commit – contains site-specific settings)
+docs.config.local.js
+
 # OS / Editor
 .DS_Store
 .idea/
