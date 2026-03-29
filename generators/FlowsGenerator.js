@@ -174,7 +174,8 @@ export class FlowsGenerator extends BaseGenerator {
             VARIABLES_COUNT: String((flowData.variables || []).length),
             VARIABLES_TABLE: this.generateVariablesTable(flowData.variables || []),
             WHERE_USED: this.generateFlowWhereUsed(flowName) || '<p><em>No usage information available.</em></p>',
-            RELATIONSHIP_MAP: this.generateRelationshipMap(flowName, 'flow')
+            RELATIONSHIP_MAP: this.generateRelationshipMap(flowName, 'flow'),
+            SOURCE_LINK: this.generateSourceFileLink(flowData.file, 'View Flow XML'),
         };
         
         const html = await this.renderTemplate(templatePath, data);
@@ -568,16 +569,18 @@ export class FlowsGenerator extends BaseGenerator {
         // Table format with ALL items (client-side JS will paginate)
         html += '<div class="table-container">\n';
         html += '<table class="data-table" id="flowsTable">\n';
-        html += '<thead><tr><th>Label</th><th>API Name</th><th>Type</th><th>Status</th></tr></thead>\n';
+        html += '<thead><tr><th>Label</th><th>API Name</th><th>Type</th><th>Status</th><th>Source</th></tr></thead>\n';
         html += '<tbody>\n';
 
         for (const [flowName, flowData] of flows) {
             const statusClass = flowData.status === 'Active' ? 'badge-success' : (flowData.status === 'Obsolete' ? 'badge-danger' : 'badge-secondary');
+            const sourceLink = this.generateSourceFileLink(flowData.file, 'View Flow XML');
             html += `            <tr>
                 <td><a href="flow-${this.sanitizeNodeName(flowName)}.html"><strong>${this.escapeHtml(flowData.label || flowName)}</strong></a></td>
                 <td><code style="font-size:0.8rem">${this.escapeHtml(flowName)}</code></td>
                 <td><span class="badge badge-info">${this.escapeHtml(flowData.processType || 'Flow')}</span></td>
                 <td><span class="badge ${statusClass}">${this.escapeHtml(flowData.status || 'Unknown')}</span></td>
+                <td>${sourceLink}</td>
             </tr>\n`;
         }
         

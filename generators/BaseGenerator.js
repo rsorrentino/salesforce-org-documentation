@@ -396,6 +396,45 @@ export class BaseGenerator {
         return Array.isArray(current) ? current : [current];
     }
     
+    // ─────────────────────────────────────────────────────────────────────────
+    // Source-link helpers
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Return a "View Source" anchor that opens the embedded source viewer for
+     * a single file (e.g. an Apex class or Flow XML).
+     *
+     * The path stored in data objects is always relative to repoRoot and uses
+     * forward slashes, e.g. "force-app/main/default/classes/MyClass.cls".
+     *
+     * @param {string} relativeFilePath  - Relative path from repo root
+     * @param {string} [label='View Source'] - Link text
+     * @param {number} [depthToRoot=2]   - How many "../" to reach the portal root
+     * @returns {string} HTML <a> element, or '' when path is falsy
+     */
+    generateSourceFileLink(relativeFilePath, label = 'View Source', depthToRoot = 2) {
+        if (!relativeFilePath) return '';
+        const rootPrefix = '../'.repeat(Math.max(0, depthToRoot));
+        const safeName   = String(relativeFilePath).replace(/[^a-zA-Z0-9]/g, '_');
+        return `<a href="${rootPrefix}pages/source/file-${safeName}.html" class="source-link" title="${this.escapeHtml(relativeFilePath)}">📄 ${this.escapeHtml(label)}</a>`;
+    }
+
+    /**
+     * Return a "Browse Source" anchor that opens the embedded folder navigator
+     * for a component directory (e.g. an LWC component folder).
+     *
+     * @param {string} relativeFolderPath - Relative path from repo root
+     * @param {string} [label='Browse Source'] - Link text
+     * @param {number} [depthToRoot=2]    - How many "../" to reach the portal root
+     * @returns {string} HTML <a> element, or '' when path is falsy
+     */
+    generateSourceFolderLink(relativeFolderPath, label = 'Browse Source', depthToRoot = 2) {
+        if (!relativeFolderPath) return '';
+        const rootPrefix = '../'.repeat(Math.max(0, depthToRoot));
+        const safeName   = String(relativeFolderPath).replace(/[^a-zA-Z0-9]/g, '_');
+        return `<a href="${rootPrefix}pages/source/folder-${safeName}.html" class="source-link" title="${this.escapeHtml(relativeFolderPath)}">📁 ${this.escapeHtml(label)}</a>`;
+    }
+
     /**
      * Calculate relative path from a page to another resource
      * @param {string} fromType - Source page type
@@ -508,6 +547,10 @@ export class BaseGenerator {
         html += `        <li><a href="${pagesPrefix}maintenance/changes.html"${isActiveSub('maintenance', 'changes')}>What Changed</a></li>\n`;
         html += `        <li><a href="${pagesPrefix}maintenance/health.html"${isActiveSub('maintenance', 'health')}>Documentation Health</a></li>\n`;
         html += `        <li><a href="${pagesPrefix}custommetadata/index.html"${isActive('custommetadata')}>Custom Metadata</a></li>\n`;
+
+        // SOURCE
+        html += '        <li class="nav-group-label">SOURCE</li>\n';
+        html += `        <li><a href="${pagesPrefix}source/index.html"${isActive('source')}>Source Navigator</a></li>\n`;
 
         html += '    </ul>\n';
         html += '</div>\n';
