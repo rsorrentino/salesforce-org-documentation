@@ -160,3 +160,4 @@ docs.config.local.js
 .DS_Store
 .idea/
 .vscode/
+package-lock.json

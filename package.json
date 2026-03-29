@@ -2,14 +2,34 @@
   "name": "salesforce-documentation-portal",
   "version": "1.0.0",
   "description": "Salesforce Technical Documentation Portal - Static Web App Generator",
-  "main": "generate.js",
+  "keywords": [
+    "salesforce",
+    "documentation",
+    "generator",
+    "static-site",
+    "amplifon"
+  ],
+  "homepage": "https://github.com/rsorrentino/salesforce-org-documentation#readme",
+  "bugs": {
+    "url": "https://github.com/rsorrentino/salesforce-org-documentation/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rsorrentino/salesforce-org-documentation.git"
+  },
+  "license": "MIT",
+  "author": "Salesforce Technical Documentation Team",
   "type": "module",
+  "main": "generate.js",
+  "directories": {
+    "doc": "docs"
+  },
   "scripts": {
     "init": "node init.js",
     "generate": "node generate.js",
     "generate:source": "node generate.js --source",
-    "generate:markdown": "cross-env OUTPUT_FORMAT=markdown node generate.js",
-    "generate:both": "cross-env OUTPUT_FORMAT=both node generate.js",
+    "generate:markdown": "cross-env OUTPUT_FORMAT=markdown node generate.js --source",
+    "generate:both": "cross-env OUTPUT_FORMAT=both node generate.js --source",
     "update": "node update.js",
     "start": "node generate.js",
     "serve": "node serve.js",
@@ -27,15 +47,6 @@
     "link-check:warn": "node link-checker.js --warn-only",
     "ci": "node generate.js && node link-checker.js"
   },
-  "keywords": [
-    "salesforce",
-    "documentation",
-    "generator",
-    "static-site",
-    "amplifon"
-  ],
-  "author": "Salesforce Technical Documentation Team",
-  "license": "MIT",
   "dependencies": {
     "fast-xml-parser": "^4.3.5",
     "mermaid": "^11.12.2",
