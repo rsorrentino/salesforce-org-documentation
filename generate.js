@@ -32,6 +32,7 @@ import {
     PermissionDrilldownGenerator,
     DiffGenerator,
     CustomMetadataGenerator,
+    SourceViewerGenerator,
     MkDocsGenerator,
     PandocImporter
 } from './generators/index.js';
@@ -112,6 +113,7 @@ class ModularDocGenerator {
             new DashboardGenerator(this.repoRoot, this.data, this.toolDir),
             new PermissionDrilldownGenerator(this.repoRoot, this.data, this.toolDir),
             new CustomMetadataGenerator(this.repoRoot, this.data, this.toolDir),
+            new SourceViewerGenerator(this.repoRoot, this.data, this.toolDir),
         ];
 
         // Generate pages

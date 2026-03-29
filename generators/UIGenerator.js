@@ -103,7 +103,7 @@ export class UIGenerator extends BaseGenerator {
         // Table with ALL items (client-side JS will paginate)
         html += '<div class="table-container">\n';
         html += '<table class="data-table" id="lwcTable">\n';
-        html += '<thead><tr><th>Component Name</th><th>Exposed</th><th>Where Used</th></tr></thead>\n';
+        html += '<thead><tr><th>Component Name</th><th>Exposed</th><th>Where Used</th><th>Source</th></tr></thead>\n';
         html += '<tbody>\n';
         
         for (const componentName of sorted) {
@@ -114,10 +114,12 @@ export class UIGenerator extends BaseGenerator {
                 ? whereUsed.match(/<strong>([^<]+)<\/strong>/g)?.map(s => s.replace(/<\/?strong>/g, '')).join(', ') || 'Not used'
                 : 'Not used';
             
+            const sourceLink = this.generateSourceFolderLink(componentData?.folder, 'Browse Source');
             html += `<tr>\n`;
             html += `  <td><strong>${this.escapeHtml(componentName)}</strong></td>\n`;
             html += `  <td>${isExposed}</td>\n`;
             html += `  <td>${whereUsedPreview}</td>\n`;
+            html += `  <td>${sourceLink}</td>\n`;
             html += `</tr>\n`;
         }
         

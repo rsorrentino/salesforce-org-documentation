@@ -182,13 +182,15 @@ ${tableRows}
         const triggers = Object.entries(this.data.triggers || {});
 
         // Overview index
-        const classRows = classes.map(([name]) =>
-            `| [${this._esc(name)}](${name}.md) |`
-        ).join('\n');
+        const classRows = classes.map(([name, cls]) => {
+            const sourceCell = cls.file ? `[📄 View Source](../source/file-${this._safeName(cls.file)}.md)` : '';
+            return `| [${this._esc(name)}](${name}.md) | ${sourceCell} |`;
+        }).join('\n');
 
-        const triggerRows = triggers.map(([name, t]) =>
-            `| ${this._esc(name)} | ${this._esc(t.object || '')} |`
-        ).join('\n');
+        const triggerRows = triggers.map(([name, t]) => {
+            const sourceCell = t.file ? `[📄 View Source](../source/file-${this._safeName(t.file)}.md)` : '';
+            return `| ${this._esc(name)} | ${this._esc(t.object || '')} | ${sourceCell} |`;
+        }).join('\n');
 
         const overviewMd = `---
 title: Apex Classes & Triggers
@@ -202,15 +204,15 @@ tags:
 
 ## Apex Classes (${classes.length})
 
-| Class Name |
-|------------|
-${classRows || '| *(none found)* |'}
+| Class Name | Source |
+|------------|--------|
+${classRows || '| *(none found)* | |'}
 
 ## Apex Triggers (${triggers.length})
 
-| Trigger Name | Object |
-|-------------|--------|
-${triggerRows || '| *(none found)* | |'}
+| Trigger Name | Object | Source |
+|-------------|--------|--------|
+${triggerRows || '| *(none found)* | | |'}
 `;
         await this._writeMd('apex/index.md', overviewMd);
 
@@ -229,6 +231,10 @@ ${triggerRows || '| *(none found)* | |'}
             .map(o => `- \`${this._esc(o)}\``)
             .join('\n');
 
+        const sourceLink = cls.file
+            ? `| **Source File** | [📄 ${this._esc(cls.file)}](../source/file-${this._safeName(cls.file)}.md) |`
+            : '';
+
         const md = `---
 title: "${this._esc(name)}"
 description: "Apex class documentation for ${this._esc(name)}"
@@ -245,6 +251,7 @@ ${cls.description ? `> ${this._esc(cls.description)}\n` : ''}
 | **Sharing Model** | ${this._esc(cls.sharingModel || 'Inherited')} |
 | **Is Test Class** | ${cls.isTest ? 'Yes ✅' : 'No'} |
 | **Method Count** | ${(cls.methods || []).length} |
+${sourceLink}
 
 ${methods ? `## Methods\n\n| Method | Return Type | Modifier |\n|--------|-------------|----------|\n${methods}\n` : ''}
 ${referencedObjects ? `## Referenced Objects\n\n${referencedObjects}\n` : ''}
@@ -324,13 +331,15 @@ ${relationships ? `## Relationships\n\n| Relationship Name | Related Object | Ty
         const triggers = Object.entries(this.data.triggers || {});
         const validationRules = this.data.validationRules || {};
 
-        const flowRows = flows.map(([name, f]) =>
-            `| ${this._esc(name)} | ${this._esc(f.processType || f.type || '')} | ${this._esc(f.status || '')} |`
-        ).join('\n');
+        const flowRows = flows.map(([name, f]) => {
+            const sourceCell = f.file ? `[📄 View Flow XML](../source/file-${this._safeName(f.file)}.md)` : '';
+            return `| ${this._esc(name)} | ${this._esc(f.processType || f.type || '')} | ${this._esc(f.status || '')} | ${sourceCell} |`;
+        }).join('\n');
 
-        const triggerRows = triggers.map(([name, t]) =>
-            `| ${this._esc(name)} | ${this._esc(t.object || '')} | ${this._esc((t.events || []).join(', '))} |`
-        ).join('\n');
+        const triggerRows = triggers.map(([name, t]) => {
+            const sourceCell = t.file ? `[📄 View Source](../source/file-${this._safeName(t.file)}.md)` : '';
+            return `| ${this._esc(name)} | ${this._esc(t.object || '')} | ${this._esc((t.events || []).join(', '))} | ${sourceCell} |`;
+        }).join('\n');
 
         let vrTotal = 0;
         const vrRows = Object.entries(validationRules).flatMap(([objName, rules]) => {
@@ -360,15 +369,15 @@ tags:
 
 ## Flows (${flows.length})
 
-| Flow Name | Type | Status |
-|-----------|------|--------|
-${flowRows || '| *(none found)* | | |'}
+| Flow Name | Type | Status | Source |
+|-----------|------|--------|--------|
+${flowRows || '| *(none found)* | | | |'}
 
 ## Apex Triggers (${triggers.length})
 
-| Trigger Name | Object | Events |
-|-------------|--------|--------|
-${triggerRows || '| *(none found)* | | |'}
+| Trigger Name | Object | Events | Source |
+|-------------|--------|--------|--------|
+${triggerRows || '| *(none found)* | | | |'}
 
 ## Validation Rules (${vrTotal})
 
@@ -429,12 +438,15 @@ ${psRows || '| *(none found)* | |'}
 
     /** UI components section */
     async _generateUIDocs() {
-        const lwc = Object.keys(this.data.lwcComponents || {});
+        const lwc = Object.entries(this.data.lwcComponents || {});
         const aura = Object.keys(this.data.auraComponents || {});
         const flexi = Object.keys(this.data.flexiPages || {});
         const vf = Object.keys(this.data.visualforcePages || {});
 
-        const lwcRows = lwc.map(n => `| ${this._esc(n)} |`).join('\n');
+        const lwcRows = lwc.map(([n, l]) => {
+            const sourceCell = l.folder ? `[📁 Browse Source](../source/folder-${this._safeName(l.folder)}.md)` : '';
+            return `| ${this._esc(n)} | ${sourceCell} |`;
+        }).join('\n');
         const auraRows = aura.map(n => `| ${this._esc(n)} |`).join('\n');
         const flexiRows = flexi.map(n => `| ${this._esc(n)} |`).join('\n');
         const vfRows = vf.map(n => `| ${this._esc(n)} |`).join('\n');
@@ -454,9 +466,9 @@ tags:
 
 ## Lightning Web Components – LWC (${lwc.length})
 
-| Component Name |
-|----------------|
-${lwcRows || '| *(none found)* |'}
+| Component Name | Source |
+|----------------|--------|
+${lwcRows || '| *(none found)* | |'}
 
 ## Aura Components (${aura.length})
 
@@ -819,5 +831,14 @@ ${typeRows || '| *(none found)* | |'}
             .replace(/\\/g, '\\\\')
             .replace(/\|/g, '\\|')
             .replace(/\n/g, ' ');
+    }
+
+    /**
+     * Convert a relative file/folder path into a safe filename fragment,
+     * matching the convention used by SourceViewerGenerator.
+     * e.g. "force-app/main/default/classes/MyClass.cls" → "force_app_main_default_classes_MyClass_cls"
+     */
+    _safeName(p) {
+        return String(p).replace(/[^a-zA-Z0-9]/g, '_');
     }
 }

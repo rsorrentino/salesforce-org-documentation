@@ -79,6 +79,7 @@ export class ApexGenerator extends BaseGenerator {
             METHODS_COUNT: classData?.methods?.length || 0,
             WHERE_USED: whereUsed,
             RELATIONSHIP_MAP: relationshipMap,
+            SOURCE_LINK: this.generateSourceFileLink(classData?.file, 'View Source (.cls)'),
         };
         
         const html = await this.renderTemplate(templatePath, data);
@@ -143,6 +144,7 @@ export class ApexGenerator extends BaseGenerator {
                         <p><strong>Is Test:</strong> ${classData?.isTest ? 'Yes' : 'No'}</p>
                         <p><strong>Sharing Model:</strong> ${this.escapeHtml(classData?.sharingModel || 'Inherited')}</p>
                         ${classData?.description ? `<p><strong>Description:</strong> ${this.escapeHtml(classData.description)}</p>` : ''}
+                        ${classData?.file ? `<p><strong>Source:</strong> ${this.generateSourceFileLink(classData.file, 'View Source (.cls)')}</p>` : ''}
                     </div>
                 </section>
                 <section>
@@ -254,7 +256,7 @@ export class ApexGenerator extends BaseGenerator {
         // Table with ALL items (client-side JS will paginate)
         html += '<div class="table-container">\n';
         html += '<table class="data-table" id="apexTable">\n';
-        html += '<thead><tr><th>Class Name</th><th>Type</th><th>Where Used</th></tr></thead>\n';
+        html += '<thead><tr><th>Class Name</th><th>Type</th><th>Where Used</th><th>Source</th></tr></thead>\n';
         html += '<tbody>\n';
         
         for (const className of sorted) {
@@ -267,10 +269,12 @@ export class ApexGenerator extends BaseGenerator {
                 : 'Not used';
             
             const safeName = className.replace(/[^a-zA-Z0-9]/g, '_');
+            const sourceLink = this.generateSourceFileLink(classData?.file, 'View Source');
             html += `<tr>\n`;
             html += `  <td><a href="class-${safeName}.html"><strong>${this.escapeHtml(className)}</strong></a></td>\n`;
             html += `  <td>${isTest}</td>\n`;
             html += `  <td>${whereUsedPreview}</td>\n`;
+            html += `  <td>${sourceLink}</td>\n`;
             html += `</tr>\n`;
         }
         

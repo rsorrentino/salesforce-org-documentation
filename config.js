@@ -11,6 +11,18 @@
  */
 
 export const config = {
+    // ─── Source Repository (optional) ────────────────────────────────────────
+    // When set, documentation pages will show an additional "Open in repository"
+    // link that points directly to the file in the remote source repository
+    // (e.g. GitHub or GitLab).
+    //
+    // Example:
+    //   sourceRepoUrl: 'https://github.com/myorg/myrepo/blob/main'
+    //   (do NOT include a trailing slash)
+    //
+    // Leave empty (default) to rely solely on the built-in embedded viewer.
+    sourceRepoUrl: process.env.SOURCE_REPO_URL || '',
+
     // ─── Output Format ────────────────────────────────────────────────────────
     // 'html'     – generate static HTML pages (original behaviour, default)
     // 'markdown' – generate Markdown files suitable for MkDocs

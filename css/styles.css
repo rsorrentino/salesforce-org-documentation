@@ -2608,3 +2608,91 @@ body[data-theme="dark"] .anchor-link { color: #94a3b8; }
 body[data-theme="dark"] .anchor-link:hover { color: var(--accent-color); }
 body[data-theme="dark"] .ai-panel { border-left-color: var(--border-color); }
 body[data-theme="dark"] .sidebar { background: var(--bg-card); }
+
+/* ── Source link badge ── */
+.source-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.2rem 0.55rem;
+    font-size: 0.78rem;
+    font-weight: 500;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.source-link:hover {
+    background: var(--primary-color);
+    color: #fff;
+    border-color: var(--primary-color);
+    text-decoration: none;
+}
+body[data-theme="dark"] .source-link {
+    background: #1e2432;
+    border-color: #30363d;
+    color: #94a3b8;
+}
+body[data-theme="dark"] .source-link:hover {
+    background: var(--primary-color);
+    color: #fff;
+    border-color: var(--primary-color);
+}
+
+/* ── Source viewer page ── */
+.source-viewer-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+.source-viewer-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.85rem;
+}
+.source-file-path {
+    font-size: 0.8rem;
+    color: var(--text-tertiary);
+    margin-bottom: 0.75rem;
+}
+.source-code-block {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 1rem 1.25rem;
+    overflow: auto;
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    font-size: 0.82rem;
+    line-height: 1.6;
+    white-space: pre;
+    tab-size: 4;
+    counter-reset: source-line;
+    max-height: 80vh;
+}
+body[data-theme="dark"] .source-code-block {
+    background: #0d1117;
+    border-color: #30363d;
+    color: #c9d1d9;
+}
+
+/* ── Source folder listing ── */
+.source-folder-listing ul {
+    list-style: none;
+    padding: 0;
+    margin: 0.5rem 0 0;
+}
+.source-folder-listing ul li {
+    padding: 0.45rem 0;
+    border-bottom: 1px solid var(--border-color);
+}
+.source-folder-listing ul li:last-child {
+    border-bottom: none;
+}
+
