@@ -78,6 +78,7 @@ export class MkDocsGenerator extends BaseGenerator {
         await this._generateDeploymentDocs();
         await this._generateMaintenanceDocs();
         await this._generateCustomMetadataDocs();
+        await this._generateSourceDocs();
 
         await this._generateMkDocsConfig();
 
@@ -92,7 +93,7 @@ export class MkDocsGenerator extends BaseGenerator {
         const sections = [
             'apex', 'objects', 'automation', 'profiles',
             'ui', 'integrations', 'architecture', 'deployment',
-            'maintenance', 'custommetadata', 'functional'
+            'maintenance', 'custommetadata', 'functional', 'source'
         ];
         await fs.mkdir(this.docsDir, { recursive: true });
         for (const s of sections) {
@@ -673,6 +674,194 @@ ${typeRows || '| *(none found)* | |'}
     }
 
     // ─────────────────────────────────────────────────────────────────────────
+    // Source viewer docs (Markdown equivalents of SourceViewerGenerator pages)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Generate docs/source/file-<safe>.md and docs/source/folder-<safe>.md
+     * for every source path referenced by links in the other doc sections.
+     * This prevents MkDocs from emitting "target not found" warnings.
+     */
+    async _generateSourceDocs() {
+        let count = 0;
+
+        // Apex classes – file viewer pages
+        for (const [name, cls] of Object.entries(this.data.apexClasses || {})) {
+            if (cls.file) {
+                await this._writeSourceFileMd(cls.file, name);
+                count++;
+            }
+        }
+
+        // Apex triggers – file viewer pages
+        for (const [name, trig] of Object.entries(this.data.triggers || {})) {
+            if (trig.file) {
+                await this._writeSourceFileMd(trig.file, name);
+                count++;
+            }
+        }
+
+        // LWC components – folder browser pages
+        for (const [name, lwc] of Object.entries(this.data.lwcComponents || {})) {
+            if (lwc.folder) {
+                await this._writeSourceFolderMd(lwc.folder, name);
+                count++;
+            }
+        }
+
+        // Flows – file viewer pages
+        for (const [name, flow] of Object.entries(this.data.flows || {})) {
+            if (flow.file) {
+                await this._writeSourceFileMd(flow.file, name);
+                count++;
+            }
+        }
+
+        await this._writeSourceIndexMd();
+        console.log(`    Generated ${count} source viewer markdown pages.`);
+    }
+
+    /** Write a markdown source-file viewer page. */
+    async _writeSourceFileMd(relativeFilePath, name) {
+        const safeName = this._safeName(relativeFilePath);
+        const fileName = path.basename(relativeFilePath);
+        const ext      = path.extname(fileName).toLowerCase();
+        const langMap  = {
+            '.cls': 'apex', '.trigger': 'apex', '.js': 'javascript',
+            '.html': 'html', '.css': 'css', '.xml': 'xml',
+            '.json': 'json', '.md': 'markdown', '.yaml': 'yaml', '.yml': 'yaml',
+        };
+        const lang = langMap[ext] || 'text';
+
+        let content = '';
+        try {
+            content = await fs.readFile(path.join(this.repoRoot, relativeFilePath), 'utf-8');
+        } catch {
+            content = `// Source file not found: ${relativeFilePath}`;
+        }
+
+        const md = `---
+title: "${this._esc(name)} – Source"
+description: "Source code for ${this._esc(name)}"
+---
+
+# 📄 ${this._esc(fileName)}
+
+**Path:** \`${relativeFilePath}\`
+
+\`\`\`${lang}
+${content}
+\`\`\`
+`;
+        await this._writeMd(`source/file-${safeName}.md`, md);
+    }
+
+    /** Write a markdown source-folder browser page. */
+    async _writeSourceFolderMd(relativeFolderPath, name) {
+        const safeName   = this._safeName(relativeFolderPath);
+        const absPath    = path.join(this.repoRoot, relativeFolderPath);
+
+        let files = [];
+        try {
+            const entries = await fs.readdir(absPath, { withFileTypes: true });
+            files = entries
+                .filter(e => e.isFile())
+                .map(e => ({
+                    name: e.name,
+                    relPath: `${relativeFolderPath}/${e.name}`.replace(/\\/g, '/'),
+                }));
+        } catch {
+            // Folder not accessible – generate an empty page
+        }
+
+        // Also generate individual file pages for each file in the folder
+        for (const f of files) {
+            await this._writeSourceFileMd(f.relPath, `${name}/${f.name}`);
+        }
+
+        const fileRows = files.length
+            ? files.map(f => {
+                const safeFilePath = this._safeName(f.relPath);
+                return `| [📄 ${this._esc(f.name)}](file-${safeFilePath}.md) | \`${f.relPath}\` |`;
+            }).join('\n')
+            : '| *(no files found)* | |';
+
+        const md = `---
+title: "${this._esc(name)} – Source Folder"
+description: "Source folder browser for ${this._esc(name)}"
+---
+
+# 📁 ${this._esc(name)}
+
+**Folder:** \`${relativeFolderPath}\`
+
+## Files (${files.length})
+
+| File | Path |
+|------|------|
+${fileRows}
+`;
+        await this._writeMd(`source/folder-${safeName}.md`, md);
+    }
+
+    /** Write the source section index page. */
+    async _writeSourceIndexMd() {
+        const apexItems = Object.entries(this.data.apexClasses || {})
+            .filter(([, c]) => c.file)
+            .map(([name, c]) => ({ name, path: c.file, isFolder: false }));
+
+        const triggerItems = Object.entries(this.data.triggers || {})
+            .filter(([, t]) => t.file)
+            .map(([name, t]) => ({ name, path: t.file, isFolder: false }));
+
+        const lwcItems = Object.entries(this.data.lwcComponents || {})
+            .filter(([, l]) => l.folder)
+            .map(([name, l]) => ({ name, path: l.folder, isFolder: true }));
+
+        const flowItems = Object.entries(this.data.flows || {})
+            .filter(([, f]) => f.file)
+            .map(([name, f]) => ({ name, path: f.file, isFolder: false }));
+
+        const buildSection = (title, items) => {
+            if (!items.length) return '';
+            const rows = items
+                .sort((a, b) => a.name.localeCompare(b.name))
+                .map(item => {
+                    const safe = this._safeName(item.path);
+                    const icon = item.isFolder ? '📁' : '📄';
+                    const href = item.isFolder ? `folder-${safe}.md` : `file-${safe}.md`;
+                    return `| [${icon} ${this._esc(item.name)}](${href}) | \`${item.path}\` |`;
+                }).join('\n');
+            return `## ${title} (${items.length})\n\n| Name | Path |\n|------|------|\n${rows}\n`;
+        };
+
+        const total = apexItems.length + triggerItems.length + lwcItems.length + flowItems.length;
+
+        const sections = [
+            buildSection('Apex Classes',   apexItems),
+            buildSection('Apex Triggers',  triggerItems),
+            buildSection('LWC Components', lwcItems),
+            buildSection('Flows',          flowItems),
+        ].filter(Boolean).join('\n');
+
+        const md = `---
+title: Source Navigator
+description: Browse and read the source files for all analyzed Salesforce components.
+tags:
+  - source
+  - salesforce
+---
+
+# Source Navigator
+
+Browse and read the source files for all ${total} analyzed Salesforce components.
+
+${sections || '*No source files found.*'}
+`;
+        await this._writeMd('source/index.md', md);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
     // mkdocs.yml generation
     // ─────────────────────────────────────────────────────────────────────────
 
@@ -744,6 +933,11 @@ ${typeRows || '| *(none found)* | |'}
                     { 'Architecture':        'architecture/index.md' },
                     { 'Deployment':          'deployment/index.md' },
                     { 'Documentation Health':'maintenance/index.md' }
+                ]
+            },
+            {
+                Source: [
+                    { 'Source Navigator': 'source/index.md' }
                 ]
             }
         ];
