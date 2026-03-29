@@ -36,7 +36,7 @@ export const config = {
     // ─── MkDocs Configuration ─────────────────────────────────────────────────
     // These values are used to generate mkdocs.yml.
     // Install dependencies with:
-    //   pip install mkdocs mkdocs-material pymdown-extensions
+    //   pip install -r requirements.txt
     mkdocs: {
         site_name: process.env.MKDOCS_SITE_NAME || 'Salesforce Technical Documentation',
         site_description: 'Auto-generated Salesforce Org Documentation Portal',
@@ -81,13 +81,25 @@ export const config = {
 
         // Python-Markdown extensions to enable.
         // pymdownx.superfences is required for Mermaid diagram code blocks.
+        // pymdownx.tabbed requires alternate_style: true for Material for MkDocs.
         markdown_extensions: [
             'admonition',
             'tables',
             'toc',
             'pymdownx.details',
-            'pymdownx.superfences',
-            'pymdownx.tabbed',
+            {
+                'pymdownx.superfences': {
+                    custom_fences: [
+                        {
+                            name: 'mermaid',
+                            class: 'mermaid',
+                            // Raw YAML tag – emitted verbatim in mkdocs.yml
+                            format: { __yaml_raw: '!!python/name:pymdownx.superfences.fence_code_format' }
+                        }
+                    ]
+                }
+            },
+            { 'pymdownx.tabbed': { alternate_style: true } },
             'pymdownx.highlight'
         ],
 

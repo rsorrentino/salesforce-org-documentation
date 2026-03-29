@@ -1,0 +1,11 @@
+# Python dependencies for MkDocs documentation generation
+#
+# MkDocs 2.0 is a separate, incompatible fork of MkDocs. Pin to <2.0 to
+# prevent accidental installation of that version.
+# See: https://squidfunk.github.io/mkdocs-material/blog/2026/02/18/mkdocs-2.0/
+#
+# Install with: pip install -r requirements.txt
+
+mkdocs>=1.5,<2.0
+mkdocs-material>=9.5,<10.0
+pymdown-extensions>=10.0
