@@ -124,6 +124,7 @@ documentation-portal/
 ├── update.js            # Git pull + regenerate
 ├── cleanup.js           # Removes generated output
 ├── link-checker.js      # Validates all links in generated pages
+├── config.js            # Output format, MkDocs settings, and Pandoc path configuration
 ├── generators/          # Modular generator classes (one per documentation section)
 │   ├── BaseGenerator.js
 │   ├── ApexGenerator.js
@@ -142,6 +143,8 @@ documentation-portal/
 │   ├── MaintenanceGenerator.js
 │   ├── PermissionDrilldownGenerator.js
 │   ├── CustomMetadataGenerator.js
+│   ├── MkDocsGenerator.js   # Generates Markdown pages + mkdocs.yml
+│   ├── PandocImporter.js    # Imports pandoc-generated Markdown folders
 │   ├── SearchIndexGenerator.js
 │   ├── SitemapGenerator.js
 │   └── index.js
@@ -177,6 +180,130 @@ Every section generator extends `BaseGenerator` and is independently invokable. 
 - **Accessibility** — Skip links, ARIA labels, semantic HTML, keyboard-navigable sidebar
 - **SEO** — Canonical links, robots meta, generated sitemap
 - **404 page** — Custom error page with navigation links
+
+
+---
+
+## MkDocs Integration
+
+The portal can generate a complete **MkDocs-compatible documentation site** from the same Salesforce metadata.
+
+### Quick start
+
+```bash
+# 1. Install Python MkDocs dependencies (once)
+pip install mkdocs mkdocs-material pymdown-extensions
+
+# 2. Generate Markdown files + mkdocs.yml
+npm run generate:markdown
+
+# 3. Preview in the browser
+npm run serve:mkdocs        # runs: mkdocs serve
+
+# 4. Build a static site for deployment
+npm run build:mkdocs        # runs: mkdocs build  →  outputs to site/
+```
+
+### Output structure
+
+```
+docs/                        # generated Markdown files
+├── index.md                 # dashboard overview
+├── apex/
+│   ├── index.md             # all Apex classes
+│   └── <ClassName>.md       # individual class detail
+├── objects/
+│   ├── index.md
+│   └── <ObjectName>.md
+├── automation/index.md
+├── profiles/index.md
+├── ui/index.md
+├── integrations/index.md
+├── architecture/index.md    # includes Mermaid architecture diagram
+├── deployment/index.md
+├── maintenance/index.md
+├── custommetadata/index.md
+└── functional/              # pandoc-imported pages (if configured)
+    └── <section>/
+        └── *.md
+mkdocs.yml                   # auto-generated MkDocs configuration
+```
+
+### Output format options
+
+| Script | `OUTPUT_FORMAT` | Behaviour |
+|--------|-----------------|-----------|
+| `npm run generate` | `html` (default) | Generates static HTML pages only |
+| `npm run generate:markdown` | `markdown` | Generates MkDocs Markdown + mkdocs.yml only |
+| `npm run generate:both` | `both` | Generates both HTML pages **and** Markdown |
+
+You can also pass the variable inline:
+
+```bash
+OUTPUT_FORMAT=markdown node generate.js --source=../my-salesforce-repo
+```
+
+### Customising mkdocs.yml
+
+Edit **`config.js`** in the portal root to change the site name, theme, plugins, or Markdown extensions. A full reference is included as inline comments in that file.
+
+For site-specific overrides that you don't want to commit, copy the file to `docs.config.local.js`—it takes precedence automatically:
+
+```bash
+cp config.js docs.config.local.js
+# edit docs.config.local.js ...
+```
+
+### Environment variables
+
+| Variable | Default | Description |
+|---|---|---|
+| `OUTPUT_FORMAT` | `html` | `html`, `markdown`, or `both` |
+| `DOCS_OUTPUT_DIR` | `docs` | Output directory for Markdown files |
+| `MKDOCS_SITE_NAME` | `Salesforce Technical Documentation` | Site title in mkdocs.yml |
+| `MKDOCS_SITE_AUTHOR` | — | Author field in mkdocs.yml |
+
+---
+
+## Pandoc Integration
+
+If your team uses **[Pandoc](https://pandoc.org/)** to convert Word documents, PDFs, or other formats into Markdown (e.g. functional specifications), the portal can automatically include those files in the MkDocs documentation.
+
+### Configuration
+
+In **`config.js`** (or your `docs.config.local.js`), set the `pandocPaths` array:
+
+```js
+pandocPaths: [
+  {
+    path: '/absolute/path/to/functional-specs',   // where pandoc wrote the .md files
+    section: 'functional-specs',                   // sub-folder name under docs/functional/
+    title: 'Functional Specifications'             // nav label in mkdocs.yml
+  },
+  {
+    path: '../business-requirements',              // relative paths work too
+    section: 'business-requirements',
+    title: 'Business Requirements'
+  }
+]
+```
+
+### How it works
+
+1. The `PandocImporter` recursively finds all `.md` files in each configured folder.
+2. Files are copied to `docs/functional/<section>/` preserving their sub-directory structure.
+3. If a file lacks YAML front-matter, one is injected automatically with `tags: [functional, pandoc, <section>]`.
+4. The MkDocs navigation (`mkdocs.yml`) is automatically extended with a **Functional Documentation** section.
+
+### Typical pandoc workflow
+
+```bash
+# Convert a Word document to Markdown
+pandoc -f docx -t markdown -o functional-specs/my-spec.md my-spec.docx
+
+# Now generate the full docs (HTML + MkDocs with pandoc-imported specs)
+OUTPUT_FORMAT=both node generate.js --source=../my-salesforce-repo
+```
 
 ---
 
