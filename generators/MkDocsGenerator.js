@@ -41,6 +41,8 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { BaseGenerator } from './BaseGenerator.js';
+import { FlowsGenerator } from './FlowsGenerator.js';
+import { ObjectsGenerator } from './ObjectsGenerator.js';
 
 export class MkDocsGenerator extends BaseGenerator {
     /**
@@ -56,6 +58,9 @@ export class MkDocsGenerator extends BaseGenerator {
         this.docsDir = path.join(toolDir, config.docsOutputDir || 'docs');
         this.pandocNavEntries = pandocNavEntries;
         this.type = 'mkdocs';
+        // Reuse HTML generators to keep Mermaid and data-model diagram logic consistent.
+        this.flowDiagramHelper = new FlowsGenerator(repoRoot, data, toolDir);
+        this.objectDiagramHelper = new ObjectsGenerator(repoRoot, data, toolDir);
         // Consistent timestamp for all pages in this generation run
         this.generatedAt = new Date().toISOString();
     }
@@ -72,6 +77,7 @@ export class MkDocsGenerator extends BaseGenerator {
         await this._generateIndexPage();
         await this._generateApexDocs();
         await this._generateObjectsDocs();
+        await this._generateFlowDocs();
         await this._generateAutomationDocs();
         await this._generateProfilesDocs();
         await this._generateUIDocs();
@@ -80,7 +86,9 @@ export class MkDocsGenerator extends BaseGenerator {
         await this._generateDeploymentDocs();
         await this._generateMaintenanceDocs();
         await this._generateCustomMetadataDocs();
+        await this._generateCrossReferenceDocs();
         await this._generateSourceDocs();
+        await this._generatePortalThemeAssets();
 
         // AI-agent integration artefacts (generated last so they can reflect all pages)
         await this._generateLlmsTxt();
@@ -99,7 +107,7 @@ export class MkDocsGenerator extends BaseGenerator {
         const sections = [
             'apex', 'objects', 'automation', 'profiles',
             'ui', 'integrations', 'architecture', 'deployment',
-            'maintenance', 'custommetadata', 'functional', 'source'
+            'maintenance', 'custommetadata', 'cross-reference', 'functional', 'source'
         ];
         await fs.mkdir(this.docsDir, { recursive: true });
         for (const s of sections) {
@@ -136,12 +144,64 @@ export class MkDocsGenerator extends BaseGenerator {
             ['Permission Sets',         counts.permSets,    'profiles/index.md'],
             ['Apex Triggers',           counts.triggers,    'automation/index.md'],
             ['Flexible Pages',          counts.flexiPages,  'ui/index.md'],
+            ['Cross-Reference',         this._countRelationshipEntries(), 'cross-reference/index.md'],
         ];
 
         const tableRows = rows
             .map(([label, count, link]) =>
                 `| [${label}](${link}) | **${count}** |`)
             .join('\n');
+
+        const statCards = rows
+                        .map(([label, count, link]) => `
+<a class="portal-stat-card" href="${this._siteHref(link)}">
+  <span class="portal-stat-value">${count}</span>
+  <span class="portal-stat-label">${label}</span>
+</a>`)
+            .join('');
+
+        const sectionCards = [
+            {
+                title: 'Developer',
+                subtitle: 'Code, metadata, and implementation assets',
+                links: [
+                    ['Apex Classes', 'apex/index.md'],
+                    ['Custom Objects & Data Model', 'objects/index.md'],
+                    ['UI Components', 'ui/index.md'],
+                    ['Automation & Flows', 'automation/index.md'],
+                    ['Integrations', 'integrations/index.md'],
+                    ['Custom Metadata', 'custommetadata/index.md'],
+                ],
+            },
+            {
+                title: 'Security',
+                subtitle: 'Access model and permission governance',
+                links: [
+                    ['Profiles & Permission Sets', 'profiles/index.md'],
+                ],
+            },
+            {
+                title: 'Operations',
+                subtitle: 'Architecture, delivery, and documentation health',
+                links: [
+                    ['Architecture', 'architecture/index.md'],
+                    ['Deployment & Environments', 'deployment/index.md'],
+                    ['Documentation Health', 'maintenance/index.md'],
+                    ['Cross-Reference', 'cross-reference/index.md'],
+                    ['Source Navigator', 'source/index.md'],
+                ],
+            },
+        ].map(section => {
+            const links = section.links
+                .map(([label, link]) => `<li><a href="${link}">${label}</a></li>`)
+                .join('');
+            return `
+<article class="portal-section-card">
+  <h3>${section.title}</h3>
+  <p>${section.subtitle}</p>
+    <ul>${section.links.map(([label, link]) => `<li><a href="${this._siteHref(link)}">${label}</a></li>`).join('')}</ul>
+</article>`;
+        }).join('');
 
         const md = `---
 title: Salesforce Org Documentation
@@ -155,7 +215,15 @@ tags:
 
 # Salesforce Technical Documentation
 
-> Generated on **${this.generatedAt}**
+<div class="portal-hero">
+    <p class="portal-kicker">Salesforce Technical Documentation</p>
+    <h1 class="portal-title">Organization Knowledge Hub</h1>
+    <p class="portal-subtitle">Generated on <strong>${this.generatedAt}</strong></p>
+</div>
+
+<section class="portal-stats-grid">
+${statCards}
+</section>
 
 ## Organisation Summary
 
@@ -164,6 +232,10 @@ tags:
 ${tableRows}
 
 ## Sections
+
+<section class="portal-sections-grid">
+${sectionCards}
+</section>
 
 === "Developer"
     - [Apex Classes](apex/index.md)
@@ -180,6 +252,7 @@ ${tableRows}
     - [Architecture](architecture/index.md)
     - [Deployment & Environments](deployment/index.md)
     - [Documentation Health](maintenance/index.md)
+    - [Cross-Reference](cross-reference/index.md)
 `;
 
         await this._writeMd('index.md', md);
@@ -189,17 +262,49 @@ ${tableRows}
     async _generateApexDocs() {
         const classes = Object.entries(this.data.apexClasses || {});
         const triggers = Object.entries(this.data.triggers || {});
+        const rel = this.data.relationships || {};
 
         // Overview index
         const classRows = classes.map(([name, cls]) => {
             const sourceCell = cls.file ? `[📄 View Source](../source/file-${this._safeName(cls.file)}.md)` : '';
-            return `| [${this._esc(name)}](${name}.md) | ${sourceCell} |`;
+            const usage = [];
+            if ((rel.classToLWC?.[name] || []).length > 0) usage.push(`[LWC](${this._linkUiIndexFromSection()})`);
+            if ((rel.classToFlow?.[name] || []).length > 0) usage.push(`[Flows](${this._linkAutomationIndexFromSection()})`);
+            if ((rel.classToTrigger?.[name] || []).length > 0) usage.push(`[Triggers](${this._linkAutomationIndexFromSection()})`);
+            if ((rel.classToAura?.[name] || []).length > 0) usage.push(`[Aura](${this._linkUiIndexFromSection()})`);
+            if ((rel.classToVisualforce?.[name] || []).length > 0) usage.push(`[Visualforce](${this._linkUiIndexFromSection()})`);
+            const usedIn = usage.length ? usage.join(', ') : '—';
+
+            const referencedObjects = this._uniqueSorted(cls.referencedObjects || []);
+            const objectLinks = referencedObjects.length
+                ? referencedObjects.slice(0, 4).map(o => this._linkObjectFromSection(o)).join(', ') + (referencedObjects.length > 4 ? ` (+${referencedObjects.length - 4})` : '')
+                : '—';
+
+            return `| [${this._esc(name)}](${name}.md) | ${usedIn} | ${objectLinks} | ${sourceCell} |`;
         }).join('\n');
 
         const triggerRows = triggers.map(([name, t]) => {
             const sourceCell = t.file ? `[📄 View Source](../source/file-${this._safeName(t.file)}.md)` : '';
             return `| ${this._esc(name)} | ${this._esc(t.object || '')} | ${sourceCell} |`;
         }).join('\n');
+
+                const statCards = `
+<a class="portal-stat-card" href="#apex-classes">
+    <span class="portal-stat-value">${classes.length}</span>
+    <span class="portal-stat-label">Apex Classes</span>
+</a>
+<a class="portal-stat-card" href="#apex-triggers">
+    <span class="portal-stat-value">${triggers.length}</span>
+    <span class="portal-stat-label">Apex Triggers</span>
+</a>
+<a class="portal-stat-card" href="${this._siteHref('../automation/index.md')}">
+    <span class="portal-stat-value">${Object.keys(rel.classToFlow || {}).length}</span>
+    <span class="portal-stat-label">Classes Linked to Flows</span>
+</a>
+<a class="portal-stat-card" href="${this._siteHref('../ui/index.md')}">
+    <span class="portal-stat-value">${Object.keys(rel.classToLWC || {}).length}</span>
+    <span class="portal-stat-label">Classes Linked to LWC</span>
+</a>`;
 
         const overviewMd = `---
 title: Apex Classes & Triggers
@@ -213,13 +318,23 @@ tags:
 
 # Apex Classes & Triggers
 
-## Apex Classes (${classes.length})
+<div class="portal-hero portal-hero--section">
+    <p class="portal-kicker">Code Layer</p>
+    <h1 class="portal-title">Apex Classes and Trigger Execution</h1>
+    <p class="portal-subtitle">Class inventory, trigger mappings, and upstream references.</p>
+</div>
 
-| Class Name | Source |
-|------------|--------|
-${classRows || '| *(none found)* | |'}
+<section class="portal-stats-grid portal-stats-grid--compact">
+${statCards}
+</section>
 
-## Apex Triggers (${triggers.length})
+<h2 id="apex-classes">Apex Classes (${classes.length})</h2>
+
+| Class Name | Used In | Referenced Objects | Source |
+|------------|---------|--------------------|--------|
+${classRows || '| *(none found)* | | | |'}
+
+<h2 id="apex-triggers">Apex Triggers (${triggers.length})</h2>
 
 | Trigger Name | Object | Source |
 |-------------|--------|--------|
@@ -238,8 +353,29 @@ ${triggerRows || '| *(none found)* | | |'}
             .map(m => `| \`${this._esc(m.name || m)}\` | ${this._esc(m.returnType || '')} | ${this._esc(m.modifier || '')} |`)
             .join('\n');
 
-        const referencedObjects = (cls.referencedObjects || [])
-            .map(o => `- \`${this._esc(o)}\``)
+        const referencedObjects = this._uniqueSorted(cls.referencedObjects || [])
+            .map(o => `- ${this._linkObjectFromSection(o)}`)
+            .join('\n');
+
+        const rel = this.data.relationships || {};
+        const lwcUsage = this._uniqueSorted(rel.classToLWC?.[name] || [])
+            .map(lwcName => {
+                const folder = this.data.lwcComponents?.[lwcName]?.folder;
+                return folder
+                    ? `- [${this._esc(lwcName)}](../source/folder-${this._safeName(folder)}.md)`
+                    : `- [${this._esc(lwcName)}](${this._linkUiIndexFromSection()})`;
+            }).join('\n');
+        const flowUsage = this._uniqueSorted(rel.classToFlow?.[name] || [])
+            .map(flowName => `- ${this._esc(flowName)}`)
+            .join('\n');
+        const triggerUsage = this._uniqueSorted(rel.classToTrigger?.[name] || [])
+            .map(triggerName => `- ${this._esc(triggerName)}`)
+            .join('\n');
+        const auraUsage = this._uniqueSorted(rel.classToAura?.[name] || [])
+            .map(auraName => `- ${this._esc(auraName)}`)
+            .join('\n');
+        const vfUsage = this._uniqueSorted(rel.classToVisualforce?.[name] || [])
+            .map(vfName => `- ${this._esc(vfName)}`)
             .join('\n');
 
         const sourceLink = cls.file
@@ -273,6 +409,28 @@ ${cls.description ? `> ${this._esc(cls.description)}\n` : ''}
 ${sourceLink}
 
 ${methods ? `## Methods\n\n| Method | Return Type | Modifier |\n|--------|-------------|----------|\n${methods}\n` : ''}
+## Where This Class Is Used
+
+### LWC Components (${(rel.classToLWC?.[name] || []).length})
+
+${lwcUsage || '_No LWC references found._'}
+
+### Flows (${(rel.classToFlow?.[name] || []).length})
+
+${flowUsage || `_No Flow references found. See [Automation](${this._linkAutomationIndexFromSection()})._`}
+
+### Triggers (${(rel.classToTrigger?.[name] || []).length})
+
+${triggerUsage || `_No Trigger references found. See [Automation](${this._linkAutomationIndexFromSection()})._`}
+
+### Aura Components (${(rel.classToAura?.[name] || []).length})
+
+${auraUsage || `_No Aura references found. See [UI Components](${this._linkUiIndexFromSection()})._`}
+
+### Visualforce Pages (${(rel.classToVisualforce?.[name] || []).length})
+
+${vfUsage || `_No Visualforce references found. See [UI Components](${this._linkUiIndexFromSection()})._`}
+
 ${referencedObjects ? `## Referenced Objects\n\n${referencedObjects}\n` : ''}
 `;
         await this._writeMd(`apex/${name}.md`, md);
@@ -281,10 +439,17 @@ ${referencedObjects ? `## Referenced Objects\n\n${referencedObjects}\n` : ''}
     /** Custom objects / data model section */
     async _generateObjectsDocs() {
         const objects = Object.entries(this.data.objects || {});
+        const objectToApex = this._deriveObjectToApexMap();
+        const dataModelMermaid = this.objectDiagramHelper.generateUMLDiagram();
+        const totalFields = objects.reduce((sum, [, obj]) => sum + ((obj.fields || []).length), 0);
+        const totalRelationships = objects.reduce((sum, [, obj]) => sum + ((obj.relationships || []).length), 0);
 
         const overviewRows = objects.map(([name, obj]) => {
             const fieldCount = (obj.fields || []).length;
-            return `| [${this._esc(name)}](${name}.md) | ${this._esc(obj.label || '')} | ${fieldCount} |`;
+            const validationCount = (this.data.validationRules?.[name] || []).length;
+            const recordTypeCount = (this.data.recordTypes?.[name] || []).length;
+            const apexUsageCount = (objectToApex[name] || []).length;
+            return `| [${this._esc(name)}](${name}.md) | ${this._esc(obj.label || '')} | ${fieldCount} | ${recordTypeCount} | ${validationCount} | ${apexUsageCount} |`;
         }).join('\n');
 
         const overviewMd = `---
@@ -300,11 +465,42 @@ tags:
 
 # Custom Objects & Data Model
 
-## Custom Objects (${objects.length})
+<div class="portal-hero portal-hero--section">
+    <p class="portal-kicker">Data Layer</p>
+    <h1 class="portal-title">Object Catalog and Relationships</h1>
+    <p class="portal-subtitle">Schema inventory with fields, validation rules, and cross-object relationships.</p>
+</div>
 
-| API Name | Label | Fields |
-|----------|-------|--------|
-${overviewRows || '| *(none found)* | | |'}
+<section class="portal-stats-grid portal-stats-grid--compact">
+    <a class="portal-stat-card" href="#custom-objects">
+        <span class="portal-stat-value">${objects.length}</span>
+        <span class="portal-stat-label">Objects</span>
+    </a>
+    <a class="portal-stat-card" href="#custom-objects">
+        <span class="portal-stat-value">${totalFields}</span>
+        <span class="portal-stat-label">Fields</span>
+    </a>
+    <a class="portal-stat-card" href="#custom-objects">
+        <span class="portal-stat-value">${totalRelationships}</span>
+        <span class="portal-stat-label">Relationships</span>
+    </a>
+    <a class="portal-stat-card" href="#data-model-diagram">
+        <span class="portal-stat-value">${Object.keys(objectToApex).length}</span>
+        <span class="portal-stat-label">Objects Used by Apex</span>
+    </a>
+</section>
+
+<h2 id="custom-objects">Custom Objects (${objects.length})</h2>
+
+| API Name | Label | Fields | Record Types | Validation Rules | Used By Apex |
+|----------|-------|--------|--------------|------------------|--------------|
+${overviewRows || '| *(none found)* | | | | | |'}
+
+<h2 id="data-model-diagram">Data Model Diagram</h2>
+
+\`\`\`mermaid
+${dataModelMermaid}
+\`\`\`
 `;
         await this._writeMd('objects/index.md', overviewMd);
 
@@ -315,16 +511,38 @@ ${overviewRows || '| *(none found)* | | |'}
 
     async _generateObjectPage(name, obj) {
         const fields = (obj.fields || []).map(f =>
-            `| \`${this._esc(f.fullName || f.name || '')}\` | ${this._esc(f.label || '')} | ${this._esc(f.type || '')} | ${f.required ? 'Yes' : 'No'} |`
+            `| \`${this._esc(f.fullName || f.name || '')}\` | ${this._esc(f.label || '')} | ${this._esc(f.type || '')} | ${f.required ? 'Yes' : 'No'} | ${this._esc(f.description || '')} |`
         ).join('\n');
 
         const relationships = (obj.relationships || []).map(r =>
-            `| ${this._esc(r.name || '')} | ${this._esc(r.relatedObject || '')} | ${this._esc(r.type || '')} |`
+            `| ${this._esc(r.name || r.field || '')} | ${this._linkObjectFromObjectSection(r.relatedObject || '')} | ${this._esc(r.type || '')} |`
         ).join('\n');
 
         const relatedObjectNames = (obj.relationships || [])
             .map(r => r.relatedObject)
             .filter(Boolean);
+
+        const recordTypes = this.data.recordTypes?.[name] || [];
+        const recordTypeRows = recordTypes.map(rt =>
+            `| ${this._esc(rt.name || '')} | ${this._esc(rt.label || '')} | ${rt.active ? 'Yes' : 'No'} | ${this._esc(rt.description || '')} |`
+        ).join('\n');
+
+        const validationRules = this.data.validationRules?.[name] || [];
+        const validationRows = validationRules.map(vr =>
+            `| ${this._esc(vr.fullName || vr.name || '')} | ${vr.active ? 'Yes' : 'No'} | ${this._esc(vr.errorMessage || '')} | ${this._esc(vr.description || '')} |`
+        ).join('\n');
+
+        const rel = this.data.relationships || {};
+        const objectToApex = this._deriveObjectToApexMap();
+        const usedByApex = this._uniqueSorted(objectToApex[name] || [])
+            .map(className => `- ${this._linkApexFromObjectSection(className)}`)
+            .join('\n');
+        const usedByTriggers = this._uniqueSorted(rel.objectToTriggers?.[name] || [])
+            .map(triggerName => `- ${this._esc(triggerName)}`)
+            .join('\n');
+        const usedByFlows = this._uniqueSorted(rel.objectToFlows?.[name] || [])
+            .map(flowName => `- ${this._esc(flowName)}`)
+            .join('\n');
 
         const md = `---
 title: "${this._escYaml(name)}"
@@ -350,11 +568,195 @@ tags:
 | **Plural Label** | ${this._esc(obj.pluralLabel || '')} |
 | **Sharing Model** | ${this._esc(obj.sharingModel || '')} |
 | **Field Count** | ${(obj.fields || []).length} |
+| **Record Type Count** | ${recordTypes.length} |
+| **Validation Rule Count** | ${validationRules.length} |
 
-${fields ? `## Fields\n\n| API Name | Label | Type | Required |\n|----------|-------|------|----------|\n${fields}\n` : '## Fields\n\n*(no fields found)*\n'}
+${fields ? `## Fields\n\n| API Name | Label | Type | Required | Description |\n|----------|-------|------|----------|-------------|\n${fields}\n` : '## Fields\n\n*(no fields found)*\n'}
+${recordTypeRows ? `## Record Types\n\n| Name | Label | Active | Description |\n|------|-------|--------|-------------|\n${recordTypeRows}\n` : ''}
+${validationRows ? `## Validation Rules\n\n| Rule Name | Active | Error Message | Description |\n|-----------|--------|---------------|-------------|\n${validationRows}\n` : ''}
 ${relationships ? `## Relationships\n\n| Relationship Name | Related Object | Type |\n|-------------------|----------------|------|\n${relationships}\n` : ''}
+
+## Where This Object Is Used
+
+### Apex Classes (${(objectToApex[name] || []).length})
+
+${usedByApex || '_No Apex references found._'}
+
+### Flows (${(rel.objectToFlows?.[name] || []).length})
+
+${usedByFlows || '_No Flow references found._'}
+
+### Triggers (${(rel.objectToTriggers?.[name] || []).length})
+
+${usedByTriggers || '_No Trigger references found._'}
 `;
         await this._writeMd(`objects/${name}.md`, md);
+    }
+
+    /** Cross-reference section */
+    async _generateCrossReferenceDocs() {
+        const rel = this.data.relationships || {};
+        const rows = [];
+
+        const pushRows = (sourceType, targetType, map, sourceLinker = null, targetLinker = null) => {
+            for (const [sourceName, targets] of Object.entries(map || {})) {
+                const uniqueTargets = this._uniqueSorted(targets || []);
+                if (!uniqueTargets.length) continue;
+                const linkedSource = sourceLinker ? sourceLinker(sourceName) : this._esc(sourceName);
+                const targetSample = uniqueTargets.slice(0, 8)
+                    .map(t => targetLinker ? targetLinker(t) : this._esc(t))
+                    .join(', ');
+                rows.push(`| ${this._esc(sourceType)} | ${linkedSource} | ${this._esc(targetType)} | ${uniqueTargets.length} | ${targetSample}${uniqueTargets.length > 8 ? ' ...' : ''} |`);
+            }
+        };
+
+        pushRows('Apex Class', 'LWC Components', rel.classToLWC, c => this._linkApexFromSection(c), l => this._linkLwcOrUiFromSection(l));
+        pushRows('Apex Class', 'Flows', rel.classToFlow, c => this._linkApexFromSection(c), f => this._linkFlowFromAutomationSection(f));
+        pushRows('Apex Class', 'Triggers', rel.classToTrigger, c => this._linkApexFromSection(c));
+        pushRows('Apex Class', 'Aura Components', rel.classToAura);
+        pushRows('Object', 'Flows', rel.objectToFlows, o => this._linkObjectFromSection(o), f => this._linkFlowFromAutomationSection(f));
+        pushRows('Object', 'Triggers', rel.objectToTriggers, o => this._linkObjectFromSection(o));
+        pushRows('LWC Component', 'FlexiPages', rel.lwcToFlexiPages);
+        pushRows('FlexiPage', 'LWC Components', rel.flexiPageToLWC, null, l => this._linkLwcOrUiFromSection(l));
+        pushRows('FlexiPage', 'Flows', rel.flexiPageToFlows, null, f => this._linkFlowFromAutomationSection(f));
+        pushRows('Profile', 'Apex Classes', rel.profileToClasses, null, c => this._linkApexFromSection(c));
+
+        const md = `---
+title: Cross-Reference
+description: Relationship index between Salesforce metadata components.
+entity_type: section_index
+generated_at: "${this.generatedAt}"
+tags:
+  - cross-reference
+  - relationships
+  - salesforce
+---
+
+# Cross-Reference
+
+This page summarizes discovered relationships between metadata types.
+
+## Relationship Summary
+
+| Metric | Count |
+|--------|-------|
+| Relationship Buckets | ${Object.keys(rel).length} |
+| Non-empty Relationship Entries | ${this._countRelationshipEntries()} |
+
+## Relationship Matrix
+
+| Source Type | Source Name | Target Type | Target Count | Targets (sample) |
+|-------------|-------------|-------------|--------------|------------------|
+${rows.length ? rows.join('\n') : '| *(none found)* | | | | |'}
+`;
+
+        await this._writeMd('cross-reference/index.md', md);
+    }
+
+    /** Individual flow pages with Mermaid diagrams */
+    async _generateFlowDocs() {
+        const flows = Object.entries(this.data.flows || {});
+        for (const [flowName, flowData] of flows) {
+            await this._generateFlowPage(flowName, flowData);
+        }
+    }
+
+    async _generateFlowPage(flowName, flowData) {
+        const safeFlowName = this.sanitizeNodeName(flowName);
+        const diagram = this.flowDiagramHelper.generateFlowMermaid(flowName, flowData)
+            || 'flowchart TD\n    Start([Start])\n    End([End])\n    Start --> End';
+
+        const rel = this.data.relationships || {};
+        const flowToApex = this._uniqueSorted(rel.flowToApex?.[flowName] || []);
+        const flowToFlexiPages = this._uniqueSorted(rel.flowToFlexiPages?.[flowName] || []);
+        const touchedObjects = this._flowTouchedObjects(flowData);
+
+        const decisions = flowData.decisions || [];
+        const decisionRows = decisions.map(d =>
+            `| ${this._esc(d.name || '')} | ${this._esc(d.label || '')} | ${(d.rules || []).length} | ${this._esc(d.defaultTarget || '')} |`
+        ).join('\n');
+
+        const recordLookups = flowData.recordLookups || [];
+        const lookupRows = recordLookups.map(r =>
+            `| ${this._esc(r.name || '')} | ${this._esc(r.label || '')} | ${this._linkObjectFromAutomationSection(r.object || '')} |`
+        ).join('\n');
+
+        const recordUpdates = flowData.recordUpdates || [];
+        const updateRows = recordUpdates.map(r =>
+            `| ${this._esc(r.name || '')} | ${this._esc(r.label || '')} | ${this._linkObjectFromAutomationSection(r.object || '')} |`
+        ).join('\n');
+
+        const recordCreates = flowData.recordCreates || [];
+        const createRows = recordCreates.map(r =>
+            `| ${this._esc(r.name || '')} | ${this._esc(r.label || '')} | ${this._linkObjectFromAutomationSection(r.object || '')} |`
+        ).join('\n');
+
+        const actions = flowData.actions || [];
+        const actionRows = actions.map(a =>
+            `| ${this._esc(a.name || '')} | ${this._esc(a.label || '')} | ${this._esc(a.type || '')} | ${this._esc(a.actionName || '')} |`
+        ).join('\n');
+
+        const variables = flowData.variables || [];
+        const variableRows = variables.map(v =>
+            `| ${this._esc(v.name || '')} | ${this._esc(v.type || '')} | ${v.isInput ? 'Yes' : 'No'} | ${v.isOutput ? 'Yes' : 'No'} | ${v.isCollection ? 'Yes' : 'No'} | ${this._esc(v.apexClass || '')} |`
+        ).join('\n');
+
+        const sourceLink = flowData.file
+            ? `[File](../source/file-${this._safeName(flowData.file)}.md)`
+            : '';
+
+        const usedByFlexiPages = flowToFlexiPages.map(p => `- ${this._esc(p)}`).join('\n');
+        const usesApex = flowToApex.map(c => `- ${this._linkApexFromAutomationSection(c)}`).join('\n');
+        const usesObjects = touchedObjects.map(o => `- ${this._linkObjectFromAutomationSection(o)}`).join('\n');
+
+        const md = `---
+title: "${this._escYaml(flowName)}"
+description: "Flow documentation for ${this._escYaml(flowName)}"
+entity_type: flow
+api_name: "${this._escYaml(flowName)}"
+generated_at: "${this.generatedAt}"
+process_type: "${this._escYaml(flowData.processType || flowData.type || '')}"
+status: "${this._escYaml(flowData.status || '')}"
+---
+
+# ${this._esc(flowData.label || flowName)}
+
+| Property | Value |
+|----------|-------|
+| **API Name** | \`${this._esc(flowName)}\` |
+| **Process Type** | ${this._esc(flowData.processType || flowData.type || '')} |
+| **Status** | ${this._esc(flowData.status || '')} |
+| **Source** | ${sourceLink || '—'} |
+
+## Flow Diagram
+
+\`\`\`mermaid
+${diagram}
+\`\`\`
+
+## Flow Dependencies
+
+### Uses Apex Classes (${flowToApex.length})
+
+${usesApex || '_No Apex actions detected._'}
+
+### Uses Objects (${touchedObjects.length})
+
+${usesObjects || '_No object interactions detected._'}
+
+### Used In FlexiPages (${flowToFlexiPages.length})
+
+${usedByFlexiPages || '_No FlexiPage references detected._'}
+
+${decisionRows ? `## Decisions\n\n| Name | Label | Rules | Default Target |\n|------|-------|-------|----------------|\n${decisionRows}\n` : ''}
+${lookupRows ? `## Record Lookups\n\n| Name | Label | Object |\n|------|-------|--------|\n${lookupRows}\n` : ''}
+${updateRows ? `## Record Updates\n\n| Name | Label | Object |\n|------|-------|--------|\n${updateRows}\n` : ''}
+${createRows ? `## Record Creates\n\n| Name | Label | Object |\n|------|-------|--------|\n${createRows}\n` : ''}
+${actionRows ? `## Actions\n\n| Name | Label | Type | Action Name |\n|------|-------|------|-------------|\n${actionRows}\n` : ''}
+${variableRows ? `## Variables\n\n| Name | Type | Input | Output | Collection | Apex Class |\n|------|------|-------|--------|------------|------------|\n${variableRows}\n` : ''}
+`;
+
+        await this._writeMd(`automation/flow-${safeFlowName}.md`, md);
     }
 
     /** Automation section – flows, triggers, validation rules */
@@ -365,7 +767,7 @@ ${relationships ? `## Relationships\n\n| Relationship Name | Related Object | Ty
 
         const flowRows = flows.map(([name, f]) => {
             const sourceCell = f.file ? `[📄 View Flow XML](../source/file-${this._safeName(f.file)}.md)` : '';
-            return `| ${this._esc(name)} | ${this._esc(f.processType || f.type || '')} | ${this._esc(f.status || '')} | ${sourceCell} |`;
+            return `| [${this._esc(name)}](flow-${this.sanitizeNodeName(name)}.md) | ${this._esc(f.processType || f.type || '')} | ${this._esc(f.status || '')} | ${sourceCell} |`;
         }).join('\n');
 
         const triggerRows = triggers.map(([name, t]) => {
@@ -401,25 +803,50 @@ tags:
 
 # Automation & Flows
 
-## Flows (${flows.length})
+<div class="portal-hero portal-hero--section">
+    <p class="portal-kicker">Automation Layer</p>
+    <h1 class="portal-title">Flow Execution and Declarative Rules</h1>
+    <p class="portal-subtitle">Operational view of automation assets, validation rules, and trigger execution points.</p>
+</div>
+
+<section class="portal-stats-grid portal-stats-grid--compact">
+    <a class="portal-stat-card" href="#flows">
+        <span class="portal-stat-value">${flows.length}</span>
+        <span class="portal-stat-label">Flows</span>
+    </a>
+    <a class="portal-stat-card" href="#apex-triggers">
+        <span class="portal-stat-value">${triggers.length}</span>
+        <span class="portal-stat-label">Apex Triggers</span>
+    </a>
+    <a class="portal-stat-card" href="#validation-rules">
+        <span class="portal-stat-value">${vrTotal}</span>
+        <span class="portal-stat-label">Validation Rules</span>
+    </a>
+    <a class="portal-stat-card" href="#flow-landscape-first-20">
+        <span class="portal-stat-value">${Math.min(flows.length, 20)}</span>
+        <span class="portal-stat-label">Flows in Diagram</span>
+    </a>
+</section>
+
+<h2 id="flows">Flows (${flows.length})</h2>
 
 | Flow Name | Type | Status | Source |
 |-----------|------|--------|--------|
 ${flowRows || '| *(none found)* | | | |'}
 
-## Apex Triggers (${triggers.length})
+<h2 id="apex-triggers">Apex Triggers (${triggers.length})</h2>
 
 | Trigger Name | Object | Events | Source |
 |-------------|--------|--------|--------|
 ${triggerRows || '| *(none found)* | | | |'}
 
-## Validation Rules (${vrTotal})
+<h2 id="validation-rules">Validation Rules (${vrTotal})</h2>
 
 | Object | Rule Name | Description |
 |--------|-----------|-------------|
 ${vrRows || '| *(none found)* | | |'}
 
-${mermaidFlows ? `## Flow Landscape (first 20)
+${mermaidFlows ? `<h3 id="flow-landscape-first-20">Flow Landscape (first 20)</h3>
 
 \`\`\`mermaid
 graph LR
@@ -502,25 +929,50 @@ tags:
 
 # UI Components
 
-## Lightning Web Components – LWC (${lwc.length})
+<div class="portal-hero portal-hero--section">
+    <p class="portal-kicker">Presentation Layer</p>
+    <h1 class="portal-title">User Interface Components</h1>
+    <p class="portal-subtitle">Lightning, Aura, FlexiPage and Visualforce assets with source navigation.</p>
+</div>
+
+<section class="portal-stats-grid portal-stats-grid--compact">
+    <a class="portal-stat-card" href="#ui-lwc">
+        <span class="portal-stat-value">${lwc.length}</span>
+        <span class="portal-stat-label">LWC Components</span>
+    </a>
+    <a class="portal-stat-card" href="#ui-aura">
+        <span class="portal-stat-value">${aura.length}</span>
+        <span class="portal-stat-label">Aura Components</span>
+    </a>
+    <a class="portal-stat-card" href="#ui-flexi">
+        <span class="portal-stat-value">${flexi.length}</span>
+        <span class="portal-stat-label">FlexiPages</span>
+    </a>
+    <a class="portal-stat-card" href="#ui-vf">
+        <span class="portal-stat-value">${vf.length}</span>
+        <span class="portal-stat-label">Visualforce Pages</span>
+    </a>
+</section>
+
+<h2 id="ui-lwc">Lightning Web Components – LWC (${lwc.length})</h2>
 
 | Component Name | Source |
 |----------------|--------|
 ${lwcRows || '| *(none found)* | |'}
 
-## Aura Components (${aura.length})
+<h2 id="ui-aura">Aura Components (${aura.length})</h2>
 
 | Component Name |
 |----------------|
 ${auraRows || '| *(none found)* |'}
 
-## Flexible Pages – FlexiPages (${flexi.length})
+<h2 id="ui-flexi">Flexible Pages – FlexiPages (${flexi.length})</h2>
 
 | Page Name |
 |-----------|
 ${flexiRows || '| *(none found)* |'}
 
-## Visualforce Pages (${vf.length})
+<h2 id="ui-vf">Visualforce Pages (${vf.length})</h2>
 
 | Page Name |
 |-----------|
@@ -932,6 +1384,306 @@ ${sections || '*No source files found.*'}
         await this._writeMd('source/index.md', md);
     }
 
+        /**
+         * Generate CSS assets that make MkDocs visually align with the HTML portal.
+         * Written under docs/assets so mkdocs can serve them via extra_css.
+         */
+    async _generatePortalThemeAssets() {
+        const css = `/* MkDocs visual alignment with Salesforce HTML portal */
+:root {
+    --portal-bg-primary: #ffffff;
+    --portal-bg-secondary: #f8f9fa;
+    --portal-bg-tertiary: #f1f3f5;
+    --portal-text-primary: #1a1a1a;
+    --portal-text-secondary: #4a5568;
+    --portal-text-tertiary: #718096;
+    --portal-border: #e2e8f0;
+    --portal-accent: #e31e24;
+    --portal-accent-hover: #b8151a;
+    --portal-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --portal-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+[data-md-color-scheme="default"] {
+    --md-primary-fg-color: #e31e24;
+    --md-primary-fg-color--light: #f04a50;
+    --md-primary-fg-color--dark: #b8151a;
+    --md-accent-fg-color: #e31e24;
+    --md-default-bg-color: #ffffff;
+    --md-default-fg-color: #1a1a1a;
+    --md-typeset-a-color: #e31e24;
+}
+
+/* Keep dark mode readable but preserve brand accent */
+[data-md-color-scheme="slate"] {
+    --md-primary-fg-color: #e31e24;
+    --md-primary-fg-color--light: #f04a50;
+    --md-primary-fg-color--dark: #b8151a;
+    --md-accent-fg-color: #f04a50;
+}
+
+body,
+.md-typeset {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+.md-header {
+    background: #ffffff;
+    color: var(--portal-text-primary);
+    border-bottom: 1px solid var(--portal-border);
+    box-shadow: var(--portal-shadow-sm);
+}
+
+.md-header__title,
+.md-header__button,
+.md-header__topic,
+.md-tabs__link {
+    color: var(--portal-text-primary);
+}
+
+.md-tabs {
+    background: #ffffff;
+    border-bottom: 1px solid var(--portal-border);
+}
+
+.md-tabs__link--active,
+.md-tabs__link:hover {
+    color: var(--portal-accent);
+}
+
+.md-main {
+    background: var(--portal-bg-primary);
+}
+
+.md-main__inner {
+    margin-top: 0.5rem;
+    max-width: 1700px;
+}
+
+.md-content {
+    max-width: 1200px;
+}
+
+.md-content__inner {
+    margin: 1.2rem auto 3rem;
+}
+
+.md-content__inner > h1:first-of-type {
+    display: none;
+}
+
+.md-sidebar__scrollwrap,
+.md-nav {
+    background: var(--portal-bg-secondary);
+}
+
+.md-nav__title,
+.md-nav__link {
+    color: var(--portal-text-primary);
+}
+
+.md-nav__link:hover,
+.md-nav__link--active {
+    color: var(--portal-accent);
+}
+
+.md-typeset h1,
+.md-typeset h2,
+.md-typeset h3,
+.md-typeset h4 {
+    color: var(--portal-text-primary);
+    font-weight: 600;
+}
+
+.md-typeset a {
+    color: var(--portal-accent);
+}
+
+.md-typeset a:hover {
+    color: var(--portal-accent-hover);
+}
+
+.md-typeset table:not([class]) {
+    border: 1px solid var(--portal-border);
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: var(--portal-shadow-sm);
+    font-size: 0.9rem;
+}
+
+.md-typeset table:not([class]) th {
+    background: var(--portal-bg-tertiary);
+    color: var(--portal-text-primary);
+    border-bottom: 1px solid var(--portal-border);
+}
+
+.md-typeset table:not([class]) td {
+    border-top: 1px solid var(--portal-border);
+}
+
+.md-typeset code {
+    border-radius: 4px;
+}
+
+.md-typeset .admonition,
+.md-typeset details {
+    border-radius: 10px;
+    box-shadow: var(--portal-shadow-sm);
+}
+
+.md-search__form {
+    border-radius: 8px;
+}
+
+.md-typeset hr {
+    border-bottom-color: var(--portal-border);
+}
+
+.md-typeset {
+    font-size: 0.86rem;
+}
+
+.portal-hero {
+    background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
+    border: 1px solid var(--portal-border);
+    border-radius: 14px;
+    padding: 1.2rem 1.4rem;
+    margin: 0.4rem 0 1rem;
+    box-shadow: var(--portal-shadow-sm);
+}
+
+.portal-kicker {
+    margin: 0;
+    color: var(--portal-text-secondary);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.portal-title {
+    margin: 0.3rem 0 0;
+    font-size: 1.55rem;
+    line-height: 1.22;
+}
+
+.portal-subtitle {
+    margin: 0.45rem 0 0;
+    color: var(--portal-text-secondary);
+}
+
+.portal-hero--section {
+    margin-top: 0;
+    padding: 1rem 1.15rem;
+}
+
+.portal-hero--section .portal-title {
+    font-size: 1.35rem;
+}
+
+.portal-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 0.65rem;
+    margin: 0 0 1.4rem;
+}
+
+.portal-stats-grid--compact {
+    margin: 0 0 1rem;
+    grid-template-columns: repeat(auto-fill, minmax(145px, 1fr));
+}
+
+.portal-stat-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    text-decoration: none;
+    border: 1px solid var(--portal-border);
+    border-left: 4px solid var(--portal-accent);
+    border-radius: 10px;
+    padding: 0.65rem 0.75rem;
+    background: #ffffff;
+    box-shadow: var(--portal-shadow-sm);
+    transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
+}
+
+.portal-stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--portal-shadow-md);
+    border-color: #d6dce8;
+}
+
+.portal-stat-value {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--portal-text-primary);
+}
+
+.portal-stat-label {
+    font-size: 0.76rem;
+    color: var(--portal-text-secondary);
+    line-height: 1.32;
+}
+
+.portal-sections-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 0.85rem;
+    margin: 0.35rem 0 1.4rem;
+}
+
+.portal-section-card {
+    border: 1px solid var(--portal-border);
+    border-radius: 12px;
+    padding: 0.8rem 0.9rem;
+    background: #ffffff;
+    box-shadow: var(--portal-shadow-sm);
+}
+
+.portal-section-card h3 {
+    margin: 0;
+    font-size: 0.98rem;
+}
+
+.portal-section-card p {
+    margin: 0.35rem 0 0.55rem;
+    color: var(--portal-text-secondary);
+    font-size: 0.76rem;
+}
+
+.portal-section-card ul {
+    margin: 0;
+    padding-left: 1rem;
+}
+
+.portal-section-card li {
+    margin: 0.25rem 0;
+    font-size: 0.82rem;
+}
+
+.md-typeset h2[id],
+.md-typeset h3[id] {
+    scroll-margin-top: 5rem;
+}
+
+@media (max-width: 900px) {
+    .md-main__inner {
+        margin-top: 0.25rem;
+    }
+
+    .portal-title {
+        font-size: 1.25rem;
+    }
+
+    .portal-stats-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+`;
+
+        await this._writeMd('assets/portal-theme.css', css);
+    }
+
     // ─────────────────────────────────────────────────────────────────────────
     // mkdocs.yml generation
     // ─────────────────────────────────────────────────────────────────────────
@@ -939,6 +1691,8 @@ ${sections || '*No source files found.*'}
     async _generateMkDocsConfig() {
         const mkdocsCfg = this.config.mkdocs || {};
         const docsDir = path.basename(this.docsDir);
+        const userExtraCss = Array.isArray(mkdocsCfg.extra_css) ? mkdocsCfg.extra_css : [];
+        const mergedExtraCss = [...new Set(['assets/portal-theme.css', ...userExtraCss])];
 
         const nav = this._buildNav();
 
@@ -965,6 +1719,7 @@ ${sections || '*No source files found.*'}
             'source/*.md',
             'apex/*.md',
             'objects/*.md',
+            'automation/flow-*.md',
         ];
         // Render as a YAML literal block scalar: `| \n  pattern1\n  pattern2\n  ...`
         const notInNavRaw = '|\n' + notInNavPatterns.map(p => `  ${p}`).join('\n');
@@ -1002,7 +1757,7 @@ ${sections || '*No source files found.*'}
                 { 'pymdownx.tabbed': { alternate_style: true } },
                 'pymdownx.highlight'
             ],
-            ...(mkdocsCfg.extra_css  && mkdocsCfg.extra_css.length  ? { extra_css:        mkdocsCfg.extra_css        } : {}),
+            extra_css: mergedExtraCss,
             ...(mkdocsCfg.extra_javascript && mkdocsCfg.extra_javascript.length ? { extra_javascript: mkdocsCfg.extra_javascript } : {})
         });
 
@@ -1053,7 +1808,8 @@ ${sections || '*No source files found.*'}
                 Operations: [
                     { 'Architecture':        'architecture/index.md' },
                     { 'Deployment':          'deployment/index.md' },
-                    { 'Documentation Health':'maintenance/index.md' }
+                    { 'Documentation Health':'maintenance/index.md' },
+                    { 'Cross-Reference':     'cross-reference/index.md' }
                 ]
             },
             { Source: sourceSection }
@@ -1102,6 +1858,11 @@ ${sections || '*No source files found.*'}
             .map(name => `- [${name}](objects/${name}.md)`)
             .join('\n');
 
+        const flowLinks = Object.keys(d.flows || {})
+            .sort()
+            .map(name => `- [${name}](automation/flow-${this.sanitizeNodeName(name)}.md)`)
+            .join('\n');
+
         const lwcSourceLinks = Object.entries(d.lwcComponents || {})
             .filter(([, l]) => l.folder)
             .sort(([a], [b]) => a.localeCompare(b))
@@ -1140,6 +1901,7 @@ This documentation covers all metadata components of a Salesforce org:
 - [Architecture](architecture/index.md): High-level architecture diagram and layer summary.
 - [Deployment](deployment/index.md): Deployment checklist and environment information.
 - [Documentation Health](maintenance/index.md): Documentation coverage metrics.
+- [Cross-Reference](cross-reference/index.md): Relationship matrix between metadata components.
 - [Custom Metadata](custommetadata/index.md): Custom metadata types and records.
 - [Source Navigator](source/index.md): Browse source files for all components.
 
@@ -1150,6 +1912,10 @@ ${apexLinks || '*(none)*'}
 ## Individual Object Pages
 
 ${objectLinks || '*(none)*'}
+
+## Individual Flow Pages
+
+${flowLinks || '*(none)*'}
 
 ## LWC Component Source Pages
 
@@ -1193,6 +1959,16 @@ ${lwcSourceLinks || '*(none)*'}
             field_count: (obj.fields || []).length,
         }));
 
+        const flowPages = Object.entries(d.flows || {}).map(([name, flow]) => ({
+            path:         `automation/flow-${this.sanitizeNodeName(name)}.md`,
+            title:        flow.label || name,
+            entity_type:  'flow',
+            api_name:     name,
+            section:      'automation',
+            process_type: flow.processType || flow.type || '',
+            status:       flow.status || '',
+        }));
+
         // Source viewer pages for LWC components (folder browser pages)
         const sourcePages = Object.entries(d.lwcComponents || {})
             .filter(([, l]) => l.folder)
@@ -1216,6 +1992,7 @@ ${lwcSourceLinks || '*(none)*'}
             { path: 'deployment/index.md',     title: 'Deployment & Environments',     entity_type: 'section_index',  section: 'deployment' },
             { path: 'maintenance/index.md',    title: 'Documentation Health',          entity_type: 'section_index',  section: 'maintenance' },
             { path: 'custommetadata/index.md', title: 'Custom Metadata',               entity_type: 'section_index',  section: 'custommetadata' },
+            { path: 'cross-reference/index.md', title: 'Cross-Reference',              entity_type: 'section_index',  section: 'cross-reference' },
             { path: 'source/index.md',         title: 'Source Navigator',              entity_type: 'section_index',  section: 'source' },
         ];
 
@@ -1235,7 +2012,7 @@ ${lwcSourceLinks || '*(none)*'}
             sections: {
                 apex:          { index: 'apex/index.md',           pages: apexPages.map(p => p.path) },
                 objects:       { index: 'objects/index.md',        pages: objectPages.map(p => p.path) },
-                automation:    { index: 'automation/index.md',     pages: [] },
+                automation:    { index: 'automation/index.md',     pages: flowPages.map(p => p.path) },
                 profiles:      { index: 'profiles/index.md',       pages: [] },
                 ui:            { index: 'ui/index.md',             pages: [] },
                 integrations:  { index: 'integrations/index.md',  pages: [] },
@@ -1243,9 +2020,10 @@ ${lwcSourceLinks || '*(none)*'}
                 deployment:    { index: 'deployment/index.md',     pages: [] },
                 maintenance:   { index: 'maintenance/index.md',    pages: [] },
                 custommetadata:{ index: 'custommetadata/index.md', pages: [] },
+                'cross-reference': { index: 'cross-reference/index.md', pages: [] },
                 source:        { index: 'source/index.md',         pages: sourcePages.map(p => p.path) },
             },
-            all_pages: [...sectionIndexPages, ...apexPages, ...objectPages, ...sourcePages],
+            all_pages: [...sectionIndexPages, ...apexPages, ...objectPages, ...flowPages, ...sourcePages],
         };
 
         const manifestPath = path.join(this.docsDir, 'ai-manifest.json');
@@ -1387,5 +2165,134 @@ ${lwcSourceLinks || '*(none)*'}
     _yamlList(items) {
         if (!items || items.length === 0) return ' []';
         return items.map(i => `\n  - "${this._escYaml(String(i))}"`).join('');
+    }
+
+    _uniqueSorted(items) {
+        return [...new Set((items || []).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+    }
+
+    _countRelationshipEntries() {
+        const rel = this.data.relationships || {};
+        return Object.values(rel).reduce((sum, mapObj) => {
+            if (!mapObj || typeof mapObj !== 'object') return sum;
+            return sum + Object.keys(mapObj).length;
+        }, 0);
+    }
+
+    _deriveObjectToApexMap() {
+        const derived = {};
+        const existing = this.data.relationships?.objectToApex || {};
+
+        for (const [objName, classNames] of Object.entries(existing)) {
+            derived[objName] = this._uniqueSorted(classNames || []);
+        }
+
+        for (const [className, classData] of Object.entries(this.data.apexClasses || {})) {
+            for (const objName of (classData.referencedObjects || [])) {
+                if (!objName) continue;
+                if (!derived[objName]) derived[objName] = [];
+                if (!derived[objName].includes(className)) {
+                    derived[objName].push(className);
+                }
+            }
+        }
+
+        for (const key of Object.keys(derived)) {
+            derived[key] = this._uniqueSorted(derived[key]);
+        }
+
+        return derived;
+    }
+
+    _linkAutomationIndexFromSection() {
+        return '../automation/index.md';
+    }
+
+    _linkUiIndexFromSection() {
+        return '../ui/index.md';
+    }
+
+    _linkObjectFromSection(objName) {
+        if (!objName) return '';
+        if ((this.data.objects || {})[objName]) {
+            return `[${this._esc(objName)}](../objects/${objName}.md)`;
+        }
+        return this._esc(objName);
+    }
+
+    _linkObjectFromObjectSection(objName) {
+        if (!objName) return '';
+        if ((this.data.objects || {})[objName]) {
+            return `[${this._esc(objName)}](${objName}.md)`;
+        }
+        return this._esc(objName);
+    }
+
+    _linkApexFromObjectSection(className) {
+        if (!className) return '';
+        if ((this.data.apexClasses || {})[className]) {
+            return `[${this._esc(className)}](../apex/${className}.md)`;
+        }
+        return this._esc(className);
+    }
+
+    _linkApexFromSection(className) {
+        if (!className) return '';
+        if ((this.data.apexClasses || {})[className]) {
+            return `[${this._esc(className)}](../apex/${className}.md)`;
+        }
+        return this._esc(className);
+    }
+
+    _linkObjectFromAutomationSection(objName) {
+        if (!objName) return '';
+        if ((this.data.objects || {})[objName]) {
+            return `[${this._esc(objName)}](../objects/${objName}.md)`;
+        }
+        return this._esc(objName);
+    }
+
+    _linkFlowFromAutomationSection(flowName) {
+        if (!flowName) return '';
+        if ((this.data.flows || {})[flowName]) {
+            return `[${this._esc(flowName)}](../automation/flow-${this.sanitizeNodeName(flowName)}.md)`;
+        }
+        return this._esc(flowName);
+    }
+
+    _linkLwcOrUiFromSection(lwcName) {
+        if (!lwcName) return '';
+        const folder = this.data.lwcComponents?.[lwcName]?.folder;
+        if (folder) {
+            return `[${this._esc(lwcName)}](../source/folder-${this._safeName(folder)}.md)`;
+        }
+        return `[${this._esc(lwcName)}](../ui/index.md)`;
+    }
+
+    _flowTouchedObjects(flowData) {
+        const objects = new Set();
+        for (const item of flowData.recordLookups || []) {
+            if (item.object) objects.add(item.object);
+        }
+        for (const item of flowData.recordUpdates || []) {
+            if (item.object) objects.add(item.object);
+        }
+        for (const item of flowData.recordCreates || []) {
+            if (item.object) objects.add(item.object);
+        }
+        return this._uniqueSorted(Array.from(objects));
+    }
+
+    _siteHref(docPath) {
+        if (!docPath) return '';
+        if (docPath.startsWith('#')) return docPath;
+
+        const normalized = String(docPath).replace(/\\/g, '/');
+        const withoutIndex = normalized.replace(/(^|\/)index\.md$/, '$1');
+        const route = withoutIndex.endsWith('.md')
+            ? withoutIndex.slice(0, -3) + '/'
+            : withoutIndex;
+
+        return route || './';
     }
 }

@@ -49,8 +49,8 @@ export const config = {
             palette: [
                 {
                     scheme: 'default',
-                    primary: 'blue',
-                    accent: 'indigo',
+                    primary: 'red',
+                    accent: 'red',
                     toggle: {
                         icon: 'material/brightness-7',
                         name: 'Switch to dark mode'
@@ -58,8 +58,8 @@ export const config = {
                 },
                 {
                     scheme: 'slate',
-                    primary: 'blue',
-                    accent: 'indigo',
+                    primary: 'red',
+                    accent: 'red',
                     toggle: {
                         icon: 'material/brightness-4',
                         name: 'Switch to light mode'

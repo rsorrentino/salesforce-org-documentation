@@ -211,8 +211,13 @@ pip install -r requirements.txt
 # 2. Generate Markdown files + mkdocs.yml
 npm run generate:markdown
 
+# Optional: generate using an explicit source directory
+# cross-env OUTPUT_FORMAT=markdown node generate.js --source=.
+
 # 3. Preview in the browser
-npm run serve:mkdocs        # runs: mkdocs serve
+npm run serve:mkdocs        # runs: mkdocs serve -a 127.0.0.1:8010
+#    fallback if 8010 is unavailable:
+npm run serve:mkdocs:alt    # runs: mkdocs serve -a 127.0.0.1:8020
 
 # 4. Build a static site for deployment
 npm run build:mkdocs        # runs: mkdocs build  →  outputs to site/
@@ -222,16 +227,20 @@ npm run build:mkdocs        # runs: mkdocs build  →  outputs to site/
 
 ```
 docs/                        # generated Markdown files
-├── index.md                 # dashboard overview
+├── index.md                 # portal-style dashboard overview
 ├── llms.txt                 # AI-agent navigation file (llmstxt.org convention)
 ├── ai-manifest.json         # machine-readable JSON index of all pages
+├── assets/
+│   └── portal-theme.css     # generated MkDocs theme override (HTML-style look)
 ├── apex/
 │   ├── index.md             # all Apex classes
 │   └── <ClassName>.md       # individual class detail (rich front-matter)
 ├── objects/
 │   ├── index.md
 │   └── <ObjectName>.md      # individual object detail (rich front-matter)
-├── automation/index.md
+├── automation/
+│   ├── index.md             # automation overview + landscape Mermaid
+│   └── flow-<FlowApiName>.md# individual flow detail with Mermaid diagram
 ├── profiles/index.md
 ├── ui/index.md
 ├── integrations/index.md
@@ -239,11 +248,19 @@ docs/                        # generated Markdown files
 ├── deployment/index.md
 ├── maintenance/index.md
 ├── custommetadata/index.md
+├── cross-reference/index.md # metadata relationship matrix
 └── functional/              # pandoc-imported pages (if configured)
     └── <section>/
         └── *.md
 mkdocs.yml                   # auto-generated MkDocs configuration
 ```
+
+### MkDocs output highlights
+
+- **Portal-style dashboard + section shells** — Home, Apex, Objects, Automation, and UI index pages use card-based layout closer to the HTML portal.
+- **Per-flow Markdown detail pages** — Each flow gets its own page with Mermaid, dependencies, and element tables.
+- **Cross-reference matrix** — Relationship index across Apex, Flows, Objects, FlexiPages, and LWC links.
+- **Route-safe HTML links** — Generated HTML card links use MkDocs route URLs (e.g. `objects/`) to avoid `*.md` runtime 404s.
 
 ### Output format options
 
@@ -459,6 +476,11 @@ tags:
 Run `npm run link-check` to get a full report. Most broken links indicate:
 - A metadata file was renamed or removed since the last generation
 - An individual detail page was not generated (check for errors in the console during `generate`)
+
+### MkDocs serve warnings
+
+- `GET /.well-known/appspecific/com.chrome.devtools.json 404` is a harmless Chrome/DevTools probe and can be ignored.
+- If you see `GET /something/index.md 404` while browsing the generated MkDocs site, regenerate with `npm run generate:markdown` to refresh route-safe HTML links emitted by the generator.
 
 ### Slow generation on large orgs
 
