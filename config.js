@@ -113,6 +113,23 @@ export const config = {
         // links (e.g. individual source-viewer, Apex-class, and Object pages).
         // Defaults: ['source/*.md', 'apex/*.md', 'objects/*.md']
         // not_in_nav_patterns: ['source/*.md', 'apex/*.md', 'objects/*.md']
+
+        // Development server address used by `mkdocs serve`.
+        // MkDocs defaults to 127.0.0.1:8000, but port 8000 is sometimes blocked on
+        // Windows (WinError 10013) when Hyper-V, Docker Desktop, or WSL2 is active and
+        // has placed port 8000 in the excluded ephemeral-port range.  Using port 8001
+        // avoids this problem while remaining easy to remember.
+        // Override via the MKDOCS_DEV_ADDR environment variable.
+        dev_addr: process.env.MKDOCS_DEV_ADDR || '127.0.0.1:8001',
+
+        // Maximum number of lines to embed from a source file in the source-viewer
+        // Markdown pages generated under docs/source/.  Limiting this prevents very
+        // large Apex classes, Flow XML files, or LWC bundles from creating enormous
+        // Markdown pages that cause MkDocs / Pygments to spend minutes on syntax-
+        // highlighting, which is the main driver of slow `mkdocs build` times on orgs
+        // with hundreds of components.
+        // Set to 0 (or remove) to embed the full file with no limit.
+        max_source_lines: parseInt(process.env.MKDOCS_MAX_SOURCE_LINES || '500', 10),
     },
 
     // ─── Pandoc-Generated Folder Ingestion ────────────────────────────────────

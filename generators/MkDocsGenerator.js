@@ -789,6 +789,24 @@ ${typeRows || '| *(none found)* | |'}
             content = `// Source file not found: ${relativeFilePath}`;
         }
 
+        // Truncate very large files to avoid slow MkDocs / Pygments processing.
+        // Embedding thousands of lines per file multiplied across hundreds of
+        // components is the primary driver of multi-minute `mkdocs build` times.
+        const mkdocsCfg = this.config.mkdocs || {};
+        const maxLines = mkdocsCfg.max_source_lines;
+        let truncated = false;
+        if (maxLines && maxLines > 0) {
+            const lines = content.split('\n');
+            if (lines.length > maxLines) {
+                content = lines.slice(0, maxLines).join('\n');
+                truncated = true;
+            }
+        }
+
+        const truncationNote = truncated
+            ? `\n> **Note:** Output truncated to first ${maxLines} lines. View the full file in the source repository.\n`
+            : '';
+
         const md = `---
 title: "${this._escYaml(name)} – Source"
 description: "Source code for ${this._escYaml(name)}"
@@ -797,7 +815,7 @@ description: "Source code for ${this._escYaml(name)}"
 # 📄 ${this._esc(fileName)}
 
 **Path:** \`${relativeFilePath}\`
-
+${truncationNote}
 \`\`\`${lang}
 ${content}
 \`\`\`
@@ -956,6 +974,11 @@ ${sections || '*No source files found.*'}
             site_description: mkdocsCfg.site_description || 'Auto-generated Salesforce Org Documentation Portal',
             ...(mkdocsCfg.site_author ? { site_author: mkdocsCfg.site_author } : {}),
             docs_dir: docsDir,
+            // dev_addr configures the address/port used by `mkdocs serve`.
+            // Defaults to 127.0.0.1:8001 instead of MkDocs' built-in 127.0.0.1:8000
+            // because port 8000 is frequently blocked on Windows (WinError 10013) when
+            // Hyper-V, Docker Desktop, or WSL2 is active.
+            dev_addr: mkdocsCfg.dev_addr || '127.0.0.1:8001',
             not_in_nav: { __yaml_raw: notInNavRaw },
             theme: mkdocsCfg.theme || { name: 'material' },
             nav,
