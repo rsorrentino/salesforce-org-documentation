@@ -160,7 +160,7 @@ documentation-portal/
 │   ├── SearchIndexGenerator.js
 │   ├── SitemapGenerator.js
 │   └── index.js
-├── css/styles.css       # Amplifon-branded stylesheet with dark mode support
+├── css/styles.css       # branded stylesheet with dark mode support
 ├── js/app.js            # Frontend search and navigation logic
 ├── js/vendor/           # Bundled libraries (Mermaid.js for diagrams)
 ├── templates/           # HTML page templates ({{PLACEHOLDER}} syntax)

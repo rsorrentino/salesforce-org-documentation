@@ -6,8 +6,7 @@
     "salesforce",
     "documentation",
     "generator",
-    "static-site",
-    "amplifon"
+    "static-site"
   ],
   "homepage": "https://github.com/rsorrentino/salesforce-org-documentation#readme",
   "bugs": {
