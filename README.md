@@ -14,6 +14,20 @@ This tool analyzes Salesforce XML metadata and generates interconnected HTML doc
 
 ---
 
+
+## Open Source and Community
+
+This repository is now structured for open-source collaboration.
+
+- License: [MIT](LICENSE)
+- Contribution guide: [CONTRIBUTING.md](CONTRIBUTING.md)
+- Code of conduct: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
+- Security policy: [SECURITY.md](SECURITY.md)
+- Issue templates and PR template: [`.github/`](.github/)
+
+Please read these documents before opening issues or pull requests.
+
+---
 ## Requirements
 
 - Node.js >= 16.0.0
