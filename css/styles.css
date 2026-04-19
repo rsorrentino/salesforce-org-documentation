@@ -1,18 +1,18 @@
-/* Salesforce Technical Documentation Styles - Amplifon White Theme */
+/* Salesforce Technical Documentation Styles - White Theme */
 
 :root {
-    /* White/Light Theme with Amplifon Colors */
+    /* White/Light Theme with Colors */
     --bg-primary: #ffffff;
     --bg-secondary: #f8f9fa;
     --bg-tertiary: #f1f3f5;
     --bg-card: #ffffff;
     --bg-hover: #f1f3f5;
     
-    /* Amplifon Brand Colors */
+    /* Brand Colors */
     --primary-color: #E31E24;
     --primary-dark: #B8151A;
     --primary-light: #F04A50;
-    --accent-color: #E31E24; /* Red accent for Amplifon */
+    --accent-color: #E31E24; /* Red accent for */
     --accent-hover: #B8151A;
     --accent-secondary: #2C2C2C;
     
